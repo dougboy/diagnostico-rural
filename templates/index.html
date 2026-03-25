@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Diagnóstico de Gestão Rural — Relatório Personalizado</title>
+  <meta name="description" content="Receba um diagnóstico profissional e personalizado da gestão da sua propriedade rural. Elaborado com IA + revisão de especialista. R$97.">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --verde: #1A5C38; --verde2: #2D7A50; --verde-claro: #E8F5EE;
+      --amarelo: #F0A500; --escuro: #1A1A2E; --cinza: #555; --cinza-claro: #F5F5F5;
+    }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; color: var(--escuro); background: #FAFAFA; line-height: 1.65; }
+
+    .topbar { background: var(--verde); color: #fff; text-align: center; padding: 9px; font-size: 13px; font-weight: 500; }
+
+    /* HERO */
+    .hero { background: linear-gradient(135deg, var(--verde) 0%, var(--verde2) 100%); color: #fff; padding: 64px 24px 80px; }
+    .hero-inner { max-width: 840px; margin: 0 auto; display: flex; gap: 48px; align-items: flex-start; flex-wrap: wrap; }
+    .hero-left { flex: 1; min-width: 280px; }
+    .badge { display: inline-block; background: var(--amarelo); color: var(--escuro); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; padding: 5px 14px; border-radius: 20px; margin-bottom: 20px; }
+    .hero h1 { font-size: clamp(24px, 4.5vw, 42px); font-weight: 800; line-height: 1.2; margin-bottom: 16px; }
+    .hero h1 span { color: var(--amarelo); }
+    .hero p.sub { font-size: clamp(15px, 2vw, 18px); opacity: .9; margin-bottom: 24px; max-width: 560px; }
+    .checks { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+    .checks li { display: flex; align-items: flex-start; gap: 10px; font-size: 15px; opacity: .92; }
+    .checks li::before { content: '✓'; background: var(--amarelo); color: var(--escuro); font-weight: 800; font-size: 11px; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; }
+
+    /* FORM CARD */
+    .card { background: #fff; border-radius: 14px; padding: 28px 30px; box-shadow: 0 8px 40px rgba(0,0,0,.18); max-width: 380px; flex-shrink: 0; width: 100%; }
+    .card h3 { font-size: 18px; font-weight: 700; margin-bottom: 4px; color: var(--escuro); }
+    .card .price { font-size: 28px; font-weight: 800; color: var(--verde); margin-bottom: 4px; }
+    .card .price span { font-size: 14px; font-weight: 400; color: var(--cinza); }
+    .card .desc { font-size: 13px; color: var(--cinza); margin-bottom: 18px; }
+    .card input { width: 100%; padding: 13px 15px; border: 1.5px solid #ddd; border-radius: 8px; font-size: 14px; margin-bottom: 10px; outline: none; transition: border-color .2s; }
+    .card input:focus { border-color: var(--verde); }
+    .card button { width: 100%; background: var(--amarelo); color: var(--escuro); border: none; border-radius: 8px; padding: 15px; font-size: 15px; font-weight: 800; cursor: pointer; text-transform: uppercase; letter-spacing: .5px; transition: all .2s; }
+    .card button:hover { background: #D4920A; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(240,165,0,.4); }
+    .card .privacy { text-align: center; font-size: 11px; color: #aaa; margin-top: 10px; }
+    .card .error { background: #FEE2E2; border: 1px solid #FECACA; border-radius: 6px; padding: 10px 14px; color: #B91C1C; font-size: 13px; margin-bottom: 12px; }
+
+    /* COMO FUNCIONA */
+    .section { max-width: 900px; margin: 0 auto; padding: 60px 24px; }
+    .section-title { font-size: clamp(22px, 3.5vw, 30px); font-weight: 800; margin-bottom: 10px; }
+    .section-sub { font-size: 16px; color: var(--cinza); margin-bottom: 40px; }
+    .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 24px; }
+    .step { background: #fff; border: 1px solid #E5E5E5; border-radius: 12px; padding: 24px 20px; text-align: center; }
+    .step-num { width: 40px; height: 40px; background: var(--verde); color: #fff; font-weight: 800; font-size: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; }
+    .step h4 { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
+    .step p { font-size: 13px; color: var(--cinza); }
+
+    /* O QUE INCLUI */
+    .includes { background: var(--verde-claro); padding: 60px 24px; }
+    .includes-inner { max-width: 900px; margin: 0 auto; }
+    .includes-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; margin-top: 36px; }
+    .inc-card { background: #fff; border-radius: 10px; padding: 20px; border-left: 4px solid var(--verde); }
+    .inc-card h4 { font-size: 15px; font-weight: 700; margin-bottom: 6px; color: var(--escuro); }
+    .inc-card p { font-size: 13px; color: var(--cinza); }
+
+    /* AUTOR */
+    .author { max-width: 860px; margin: 0 auto; padding: 60px 24px; display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap; }
+    .avatar { width: 80px; height: 80px; background: var(--verde); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 800; color: #fff; flex-shrink: 0; }
+    .author-info h4 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+    .cred { font-size: 13px; color: var(--verde); font-weight: 600; margin-bottom: 10px; }
+    .author-info p { font-size: 15px; color: var(--cinza); }
+
+    /* FAQ */
+    .faq { background: var(--cinza-claro); padding: 60px 24px; }
+    .faq-inner { max-width: 720px; margin: 0 auto; }
+    .faq-item { background: #fff; border-radius: 10px; padding: 18px 20px; margin-bottom: 12px; }
+    .faq-item h4 { font-size: 15px; font-weight: 700; margin-bottom: 6px; color: var(--escuro); }
+    .faq-item p { font-size: 14px; color: var(--cinza); }
+
+    /* CTA FINAL */
+    .cta { background: linear-gradient(135deg, var(--verde) 0%, var(--verde2) 100%); color: #fff; padding: 60px 24px; text-align: center; }
+    .cta h2 { font-size: clamp(22px, 4vw, 32px); font-weight: 800; margin-bottom: 12px; }
+    .cta p { font-size: 17px; opacity: .88; margin-bottom: 32px; }
+    .cta-form { display: flex; gap: 10px; max-width: 480px; margin: 0 auto 16px; flex-wrap: wrap; justify-content: center; }
+    .cta-form input { flex: 1; min-width: 180px; padding: 14px 16px; border: none; border-radius: 8px; font-size: 14px; outline: none; }
+    .cta-form button { background: var(--amarelo); color: var(--escuro); border: none; border-radius: 8px; padding: 14px 26px; font-size: 15px; font-weight: 800; cursor: pointer; text-transform: uppercase; transition: all .2s; }
+    .cta-form button:hover { background: #D4920A; }
+    .cta .priv { font-size: 12px; opacity: .55; }
+
+    footer { background: var(--escuro); color: rgba(255,255,255,.45); text-align: center; padding: 22px; font-size: 12px; }
+
+    @media(max-width:600px) { .hero-inner { gap: 32px; } .card { max-width: 100%; } }
+  </style>
+</head>
+<body>
+
+<div class="topbar">Diagnóstico 100% personalizado — Entrega automática em até 30 minutos</div>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-left">
+      <span class="badge">Para gestores do agronegócio</span>
+      <h1>Descubra os <span>gargalos reais</span> da gestão da sua operação rural</h1>
+      <p class="sub">Relatório personalizado de 12 a 15 páginas elaborado com inteligência artificial e curadoria de especialista. Entrega automática em até 30 minutos.</p>
+      <ul class="checks">
+        <li>Diagnóstico por área: financeiro, operacional, pessoas, tecnologia e comercial</li>
+        <li>Pontos críticos e riscos identificados com clareza</li>
+        <li>Plano de ação com prioridades dos próximos 30 dias até 2 anos</li>
+        <li>Linguagem direta — sem jargão acadêmico, sem rodeios</li>
+        <li>Confidencial. Exclusivo para você.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      {% if error %}
+      <div class="error">{{ error }}</div>
+      {% endif %}
+      <h3>Acesse seu diagnóstico</h3>
+      <div class="price">R$97 <span>/ relatório único</span></div>
+      <p class="desc">Preenche o formulário em 10 min. Recebe o relatório em até 30 min.</p>
+      <form method="POST" action="/criar-pagamento">
+        <input type="text"  name="name"  placeholder="Seu nome completo"  required>
+        <input type="email" name="email" placeholder="Email para receber o relatório" required>
+        <button type="submit">QUERO MEU DIAGNÓSTICO — R$97</button>
+      </form>
+      <p class="privacy">🔒 Pagamento seguro via Mercado Pago. Aceita cartão, Pix e boleto.</p>
+    </div>
+  </div>
+</section>
+
+<!-- COMO FUNCIONA -->
+<section class="section">
+  <h2 class="section-title">Como funciona</h2>
+  <p class="section-sub">Do pagamento ao relatório, tudo automático.</p>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <h4>Você paga</h4>
+      <p>Checkout seguro via Mercado Pago. Cartão, Pix ou boleto. Aprovação imediata.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <h4>Recebe o formulário</h4>
+      <p>Assim que o pagamento é confirmado, você recebe o link do formulário por email. Leva 10-15 min para preencher.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <h4>IA analisa tudo</h4>
+      <p>Nossas perguntas alimentam um modelo de linguagem treinado em gestão de negócios. A análise é profunda e específica para o seu caso.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <h4>Relatório no seu email</h4>
+      <p>Em até 30 minutos você recebe o PDF completo — pronto para ler, imprimir ou compartilhar com seu contador ou parceiros.</p>
+    </div>
+  </div>
+</section>
+
+<!-- O QUE INCLUI -->
+<section class="includes">
+  <div class="includes-inner">
+    <h2 class="section-title">O que está no relatório</h2>
+    <p class="section-sub">Uma consultoria estruturada que normalmente custa R$3.000 a R$10.000.</p>
+    <div class="includes-grid">
+      <div class="inc-card">
+        <h4>Resumo Executivo</h4>
+        <p>Síntese direta da sua situação atual, principais riscos e prioridade de ação — para você ler em 5 minutos e já ter a visão do todo.</p>
+      </div>
+      <div class="inc-card">
+        <h4>Diagnóstico por Área</h4>
+        <p>Financeiro, operacional, gestão de pessoas, tecnologia e comercial — cada área avaliada com base nas suas respostas reais.</p>
+      </div>
+      <div class="inc-card">
+        <h4>Pontos Críticos e Riscos</h4>
+        <p>Os 3-5 problemas que representam risco real para os próximos 12 meses. Sem suavizar, sem jargão.</p>
+      </div>
+      <div class="inc-card">
+        <h4>Plano de Ação Priorizado</h4>
+        <p>O que fazer nos próximos 30 dias, de 2 a 6 meses, e de 6 a 24 meses. Cada ação com o porquê e como executar.</p>
+      </div>
+      <div class="inc-card">
+        <h4>Próximos Passos Concretos</h4>
+        <p>Uma conclusão direta: o que define o sucesso da sua operação nos próximos 2 anos e o primeiro passo a dar esta semana.</p>
+      </div>
+      <div class="inc-card">
+        <h4>Formato PDF Profissional</h4>
+        <p>Relatório formatado para compartilhar com seu contador, gerente do banco ou sócios. Com sua identidade na capa.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- AUTOR -->
+<div class="author">
+  <div class="avatar">D</div>
+  <div class="author-info">
+    <h4>Douglas Lemos</h4>
+    <p class="cred">MBA FGV &nbsp;|&nbsp; Mestrado em Inovação Tecnológica UFSC &nbsp;|&nbsp; Head de Novos Negócios no Agronegócio</p>
+    <p>Com formação em Administração e experiência direta em gestão de empresas do setor agropecuário, Douglas desenvolveu o método de diagnóstico que alimenta este serviço. O relatório não é genérico — o questionário foi desenhado para capturar os problemas reais de gestão que aparecem em propriedades rurais de diferentes escalas.</p>
+  </div>
+</div>
+
+<!-- FAQ -->
+<section class="faq">
+  <div class="faq-inner">
+    <h2 class="section-title" style="text-align:center;margin-bottom:32px">Perguntas frequentes</h2>
+    <div class="faq-item">
+      <h4>O relatório é realmente personalizado ou é genérico?</h4>
+      <p>É personalizado. As respostas do seu formulário alimentam diretamente a análise — o sistema não usa templates genéricos. Se você informar que tem 50 hectares de soja no Paraná sem software de gestão, o relatório vai falar sobre isso especificamente, não sobre "gestão rural em geral".</p>
+    </div>
+    <div class="faq-item">
+      <h4>Em quanto tempo recebo o relatório?</h4>
+      <p>Assim que você enviar o formulário, o sistema gera o relatório automaticamente. Em geral menos de 30 minutos. Em raros casos de alta demanda pode levar até 1 hora.</p>
+    </div>
+    <div class="faq-item">
+      <h4>Para que tipo de operação é indicado?</h4>
+      <p>Para qualquer operação rural ou empresa do agronegócio — soja, milho, pecuária, cana, horticultura, avicultura, cooperativas, agroindústrias. O formulário identifica o seu tipo de atividade e adapta a análise.</p>
+    </div>
+    <div class="faq-item">
+      <h4>E se eu não ficar satisfeito?</h4>
+      <p>Se o relatório não entregar o que prometemos (diagnóstico personalizado e plano de ação priorizado), entre em contato por email em até 7 dias e fazemos a devolução integral.</p>
+    </div>
+    <div class="faq-item">
+      <h4>Meus dados são confidenciais?</h4>
+      <p>Sim. Suas respostas são usadas exclusivamente para gerar o seu relatório e não são compartilhadas com terceiros. Cumprimos a LGPD.</p>
+    </div>
+  </div>
+</section>
+
+<!-- CTA FINAL -->
+<section class="cta">
+  <h2>Pronto para saber onde está perdendo dinheiro?</h2>
+  <p>10 minutos de formulário. 30 minutos de processamento. Um relatório que vale o equivalente a R$3.000 em consultoria.</p>
+  <form class="cta-form" method="POST" action="/criar-pagamento">
+    <input type="text"  name="name"  placeholder="Seu nome" required>
+    <input type="email" name="email" placeholder="Seu email" required>
+    <button type="submit">QUERO MEU DIAGNÓSTICO</button>
+  </form>
+  <p class="priv">🔒 Pagamento seguro — Cartão, Pix ou boleto — Garantia de 7 dias</p>
+</section>
+
+<footer>
+  <p>&copy; 2026 Douglas Lemos — Diagnóstico de Gestão Rural</p>
+  <p style="margin-top:6px">Este serviço está em conformidade com a LGPD (Lei 13.709/2018) — <a href="mailto:contato@seudominio.com.br" style="color:rgba(255,255,255,.5)">contato@seudominio.com.br</a></p>
+</footer>
+
+</body>
+</html>

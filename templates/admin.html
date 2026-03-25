@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Admin — Diagnóstico Rural</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#F5F5F5;padding:24px;color:#1A1A2E}
+    h1{font-size:22px;font-weight:800;color:#1A5C38;margin-bottom:6px}
+    p.sub{font-size:14px;color:#777;margin-bottom:28px}
+    h2{font-size:16px;font-weight:700;color:#1A1A2E;margin:28px 0 12px}
+    table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.07);font-size:13px}
+    th{background:#1A5C38;color:#fff;padding:10px 14px;text-align:left;font-weight:600}
+    td{padding:10px 14px;border-bottom:1px solid #eee;color:#444}
+    tr:last-child td{border-bottom:none}
+    .badge{display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;text-transform:uppercase}
+    .badge.approved{background:#E8F5EE;color:#1A5C38}
+    .badge.pending{background:#FFF8E7;color:#B07D00}
+    .badge.done{background:#E8F5EE;color:#1A5C38}
+    .badge.processing{background:#EFF6FF;color:#1D4ED8}
+    .badge.error{background:#FEE2E2;color:#B91C1C}
+    .stats{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:28px}
+    .stat{background:#fff;border-radius:10px;padding:16px 20px;flex:1;min-width:120px;box-shadow:0 1px 6px rgba(0,0,0,.07);text-align:center}
+    .stat .num{font-size:28px;font-weight:800;color:#1A5C38}
+    .stat .label{font-size:12px;color:#777;margin-top:4px}
+  </style>
+</head>
+<body>
+<h1>Painel Administrativo</h1>
+<p class="sub">Diagnóstico de Gestão Rural — Visão geral das compras e diagnósticos</p>
+
+<div class="stats">
+  <div class="stat">
+    <div class="num">{{ purchases|length }}</div>
+    <div class="label">Compras totais</div>
+  </div>
+  <div class="stat">
+    <div class="num">{{ purchases|selectattr('status','equalto','approved')|list|length }}</div>
+    <div class="label">Aprovadas</div>
+  </div>
+  <div class="stat">
+    <div class="num">{{ diagnostics|selectattr('status','equalto','done')|list|length }}</div>
+    <div class="label">Relatórios gerados</div>
+  </div>
+  <div class="stat">
+    <div class="num">R$ {{ (purchases|selectattr('status','equalto','approved')|list|length * 97)|int }}</div>
+    <div class="label">Receita estimada</div>
+  </div>
+</div>
+
+<h2>Compras Recentes</h2>
+<table>
+  <tr><th>Data</th><th>Nome</th><th>Email</th><th>Status</th><th>Payment ID</th></tr>
+  {% for p in purchases %}
+  <tr>
+    <td>{{ p.created_at[:16] }}</td>
+    <td>{{ p.name or '—' }}</td>
+    <td>{{ p.email }}</td>
+    <td><span class="badge {{ p.status }}">{{ p.status }}</span></td>
+    <td style="font-size:11px;color:#aaa">{{ p.payment_id or '—' }}</td>
+  </tr>
+  {% endfor %}
+</table>
+
+<h2>Diagnósticos</h2>
+<table>
+  <tr><th>Data</th><th>Purchase ID</th><th>Status</th><th>PDF</th></tr>
+  {% for d in diagnostics %}
+  <tr>
+    <td>{{ d.created_at[:16] }}</td>
+    <td style="font-size:11px;color:#aaa">{{ d.purchase_id[:8] }}...</td>
+    <td><span class="badge {{ d.status }}">{{ d.status }}</span></td>
+    <td>{% if d.pdf_path %}✅{% else %}—{% endif %}</td>
+  </tr>
+  {% endfor %}
+</table>
+</body>
+</html>

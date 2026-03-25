@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Formulário de Diagnóstico — Preencha agora</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --verde: #1A5C38; --verde2: #2D7A50; --verde-claro: #E8F5EE; --amarelo: #F0A500; --escuro: #1A1A2E; --cinza: #555; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #F5F5F5; color: var(--escuro); line-height: 1.65; }
+
+    .topbar { background: var(--verde); color: #fff; text-align: center; padding: 10px; font-size: 13px; }
+
+    .container { max-width: 680px; margin: 0 auto; padding: 32px 20px 60px; }
+
+    .header { background: #fff; border-radius: 12px; padding: 28px; margin-bottom: 20px; border-left: 5px solid var(--verde); }
+    .header h1 { font-size: 22px; font-weight: 800; color: var(--verde); margin-bottom: 6px; }
+    .header p { font-size: 14px; color: var(--cinza); }
+    .header .time-badge { display: inline-block; background: var(--verde-claro); color: var(--verde); font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 20px; margin-top: 10px; }
+
+    /* PROGRESS */
+    .progress-wrap { background: #fff; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; }
+    .progress-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--cinza); margin-bottom: 8px; }
+    .progress-bar { background: #E5E5E5; border-radius: 10px; height: 6px; }
+    .progress-fill { background: var(--verde); height: 6px; border-radius: 10px; transition: width .4s ease; }
+
+    /* FORM GROUPS */
+    .card { background: #fff; border-radius: 12px; padding: 24px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+    .card.section-header { background: var(--verde); color: #fff; padding: 16px 20px; }
+    .card.section-header h3 { font-size: 15px; font-weight: 700; }
+    .card.section-header p { font-size: 12px; opacity: .8; margin-top: 4px; }
+
+    label { display: block; font-size: 14px; font-weight: 600; color: var(--escuro); margin-bottom: 8px; }
+    label span.req { color: #E53E3E; margin-left: 3px; }
+    label .hint { font-weight: 400; color: var(--cinza); font-size: 12px; display: block; margin-top: 2px; }
+
+    input[type=text], input[type=email], input[type=number], select, textarea {
+      width: 100%; padding: 12px 14px; border: 1.5px solid #DDD; border-radius: 8px;
+      font-size: 14px; outline: none; transition: border-color .2s; color: var(--escuro);
+      font-family: inherit; background: #FAFAFA;
+    }
+    input:focus, select:focus, textarea:focus { border-color: var(--verde); background: #fff; }
+    textarea { resize: vertical; min-height: 90px; }
+    select { cursor: pointer; }
+
+    .radio-group, .checkbox-group { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
+    .radio-btn, .check-btn {
+      flex: 0 0 auto; display: flex; align-items: center; gap: 8px;
+      background: #F5F5F5; border: 1.5px solid #DDD; border-radius: 8px;
+      padding: 9px 14px; cursor: pointer; font-size: 13px; transition: all .15s;
+    }
+    .radio-btn input, .check-btn input { width: auto; padding: 0; border: none; background: none; }
+    .radio-btn:has(input:checked), .check-btn:has(input:checked) {
+      background: var(--verde-claro); border-color: var(--verde); color: var(--verde); font-weight: 600;
+    }
+
+    .form-group { margin-bottom: 0; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media(max-width:500px) { .two-col { grid-template-columns: 1fr; } }
+
+    /* SUBMIT */
+    .submit-section { background: var(--verde); border-radius: 12px; padding: 28px; text-align: center; }
+    .submit-section h3 { color: #fff; font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+    .submit-section p { color: rgba(255,255,255,.8); font-size: 14px; margin-bottom: 20px; }
+    .btn-submit { background: var(--amarelo); color: var(--escuro); border: none; border-radius: 8px;
+      padding: 16px 40px; font-size: 16px; font-weight: 800; cursor: pointer;
+      text-transform: uppercase; letter-spacing: .5px; transition: all .2s; }
+    .btn-submit:hover { background: #D4920A; transform: translateY(-1px); }
+    .btn-submit:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+
+    .loading { display: none; text-align: center; padding: 40px; }
+    .loading p { color: var(--verde); font-weight: 600; font-size: 16px; margin-top: 16px; }
+    .spinner { width: 44px; height: 44px; border: 4px solid var(--verde-claro); border-top-color: var(--verde); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<div class="topbar">✅ Pagamento confirmado — Preencha o formulário para receber seu diagnóstico</div>
+
+<div class="container">
+
+  <div class="header">
+    <h1>Formulário de Diagnóstico</h1>
+    <p>Olá, <strong>{{ name }}</strong>! Preencha as perguntas abaixo com o máximo de detalhe possível. Quanto mais informação você fornecer, mais preciso e útil será o seu relatório.</p>
+    <span class="time-badge">⏱ Estimativa: 10-15 minutos</span>
+  </div>
+
+  <div class="progress-wrap">
+    <div class="progress-label"><span>Progresso</span><span id="pct">0%</span></div>
+    <div class="progress-bar"><div class="progress-fill" id="progress" style="width:0%"></div></div>
+  </div>
+
+  <form id="diagForm" method="POST" action="/diagnostico/{{ purchase_id }}" onsubmit="return handleSubmit()">
+
+    <!-- SEÇÃO 1: PERFIL DA OPERAÇÃO -->
+    <div class="card section-header">
+      <h3>1. Perfil da Operação</h3>
+      <p>Informações básicas sobre o que você faz e a escala da operação.</p>
+    </div>
+
+    <div class="card">
+      <div class="form-group">
+        <label>Qual é a principal atividade da sua operação?<span class="req">*</span></label>
+        <div class="radio-group">
+          {% for op in ['Soja','Milho','Soja + Milho Safrinha','Pecuária de Corte','Pecuária Leiteira','Suinocultura','Avicultura','Cana-de-Açúcar','Horticultura/Fruticultura','Múltiplas atividades','Cooperativa / Agroindústria'] %}
+          <label class="radio-btn"><input type="radio" name="atividade" value="{{ op }}" required> {{ op }}</label>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="two-col">
+        <div class="form-group">
+          <label>Área total da operação (hectares)<span class="req">*</span></label>
+          <input type="number" name="area_hectares" placeholder="Ex: 320" min="1" required>
+        </div>
+        <div class="form-group">
+          <label>Área própria vs. arrendada<span class="req">*</span>
+            <span class="hint">Escreva como: "100 próprios / 220 arrendados"</span>
+          </label>
+          <input type="text" name="area_propria_arrendada" placeholder="Ex: 100 próprios / 220 arrendados" required>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="form-group">
+        <label>Faturamento bruto anual estimado<span class="req">*</span></label>
+        <div class="radio-group">
+          {% for op in ['Até R$200 mil','R$200 mil a R$500 mil','R$500 mil a R$1 milhão','R$1 milhão a R$5 milhões','R$5 milhões a R$20 milhões','Acima de R$20 milhões'] %}
+          <label class="radio-btn"><input type="radio" name="faturamento" value="{{ op }}" required> {{ op }}</label>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="form-group">
+        <label>Quantos funcionários fixos a operação tem?<span class="req">*</span></label>
+        <div class="radio-group">
+          {% for op in ['Só eu (ou família)', '2 a 5', '6 a 15', '16 a 50', 'Mais de 50'] %}
+          <label class="radio-btn"><input type="radio" name="funcionarios" value="{{ op }}" required> {{ op }}</label>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- SEÇÃO 2: GESTÃO FINANCEIRA -->
+    <div class="card section-header">
+      <h3>2. Gestão Financeira e de Custos</h3>
+      <p>A área que mais impacta a saúde da operação a longo prazo.</p>
+    </div>
+
+    <div class="card">
+      <div class="form-group">
+        <label>Como você controla os custos de produção hoje?<span class="req">*</span>
+          <span class="hint">Seja específico — isso é central para o diagnóstico.</span>
+        </label>
+        <textarea name="controle_custos" placeholder="Ex: Uso uma planilha do Excel que meu contador fez, mas só atualizo no final de cada safra. Não separo por talhão, só tenho o total." required></textarea>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="two-col">
+        <div class="form-group">
+          <label>Você calcula o custo de produção por hectare?<span class="req">*</span></label>
+          <div class="radio-group" style="flex-direction:column">
+            {% for op in ['Sim, com frequência','Sim, mas raramente','Não calculo','Não sei como fazer'] %}
+            <label class="radio-btn"><input type="radio" name="calcula_custo_ha" value="{{ op }}" required> {{ op }}</label>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Você usa algum software de gestão?<span class="req">*</span>
+            <span class="hint">Ex: Aegro, ContaAzul, Totvs, Excel, nada...</span>
+          </label>
+          <input type="text" name="software_gestao" placeholder="Ex: Só planilha de Excel mesmo" required>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="form-group">
+        <label>Como você toma decisões de compra de insumos? (fertilizantes, defensivos, sementes)<span class="req">*</span></label>
+        <div class="radio-group">
+          {% for op in ['Planejo com antecedência e travo preços','Compro quando precisa, sem planejamento prévio','Sigo o que o agrônomo/revendedor sugere','Comparo cotações mas sem critério estruturado','Já tive problema de descasamento entre compra e caixa'] %}
+          <label class="radio-btn" style="flex:0 0 auto"><input type="radio" name="decisao_insumos" value="{{ op }}" required> {{ op }}</label>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="form-group">
+        <label>Como é o seu acesso e uso de crédito rural?<span class="req">*</span></label>
+        <div class="radio-group">
+          {% for op in ['Uso regularmente e negocio com dados estruturados','Uso mas não apresento dados organizados ao banco','Tenho acesso mas prefiro evitar endividamento','Não tenho acesso ou nunca tentei','Já tive problemas com crédito'] %}
+          <label class="radio-btn" style="flex:0 0 auto"><input type="radio" name="credito_rural" value="{{ op }}" required> {{ op }}</label>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- SEÇÃO 3: GESTÃO E DESAFIOS -->
+    <div class="card section-header">
+      <h3>3. Desafios e Pontos de Atenção</h3>
+      <p>Aqui você nos conta o que realmente está te travando.</p>
+    </div>
+
+    <div class="card">
+      <div class="form-group">
+        <label>Quais são as áreas da gestão que você sente que precisam de mais atenção?<span class="req">*</span>
+          <span class="hint">Selecione todas que se aplicam.</span>
+        </label>
+        <div class="checkbox-group">
+          {% for op in ['Controle financeiro / custos','Fluxo de caixa','Planejamento de safra','Gestão de pessoas / equipe','Tecnologia e digitalização','Estratégia de venda / preço','Acesso a crédito','Relação com fornecedores','Sucessão familiar','Compliance / ambiental'] %}
+          <label class="check-btn"><input type="checkbox" name="areas_atencao" value="{{ op }}"> {{ op }}</label>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="form-group">
+        <label>Descreva os 3 maiores desafios de gestão que você enfrenta hoje<span class="req">*</span>
+          <span class="hint">Seja direto. Essa é a pergunta mais importante do diagnóstico.</span>
+        </label>
+        <textarea name="desafios" rows="5" placeholder="Ex: 1) Não sei quanto custa realmente cada hectare de soja. 2) Minha equipe faz as coisas do jeito que sempre fizeram, sem seguir processo. 3) Toda safra acabo precisando de crédito emergencial porque o fluxo de caixa descontrola no plantio." required></textarea>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="form-group">
+        <label>Qual é a sua principal meta de crescimento para os próximos 2 anos?<span class="req">*</span></label>
+        <div class="radio-group">
+          {% for op in ['Aumentar área (arrendar ou comprar)','Melhorar a margem sem crescer em área','Diversificar para outra cultura ou atividade','Industrializar ou agregar valor','Estruturar para passar para a próxima geração','Profissionalizar a gestão sem necessariamente crescer'] %}
+          <label class="radio-btn" style="flex:0 0 auto"><input type="radio" name="meta_crescimento" value="{{ op }}" required> {{ op }}</label>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- SEÇÃO 4: INFORMAÇÕES ADICIONAIS -->
+    <div class="card section-header">
+      <h3>4. Contexto Adicional</h3>
+      <p>Qualquer informação extra que você queira que consideremos no diagnóstico.</p>
+    </div>
+
+    <div class="card">
+      <div class="form-group">
+        <label>Há algo específico que você quer que o diagnóstico aborde com mais profundidade?
+          <span class="hint">Opcional, mas pode fazer seu relatório muito mais útil.</span>
+        </label>
+        <textarea name="info_adicional" rows="4" placeholder="Ex: Estou pensando em arrendar mais 100 hectares mas não sei se financeiramente faz sentido. Ou: Tenho um sócio e estamos com dificuldade de alinhar decisões estratégicas."></textarea>
+      </div>
+    </div>
+
+    <!-- SUBMIT -->
+    <div class="submit-section" id="submitSection">
+      <h3>Pronto para gerar seu relatório?</h3>
+      <p>Revise suas respostas acima e clique para enviar. O relatório será gerado automaticamente e enviado para <strong>{{ email }}</strong>.</p>
+      <button type="submit" class="btn-submit" id="btnSubmit">GERAR MEU DIAGNÓSTICO AGORA</button>
+    </div>
+
+    <div class="loading" id="loadingDiv">
+      <div class="spinner"></div>
+      <p>Gerando seu diagnóstico personalizado...<br><small style="color:#888;font-weight:400">Isso pode levar até 3 minutos. Não feche esta página.</small></p>
+    </div>
+
+  </form>
+</div>
+
+<script>
+  // Progress bar
+  const requiredInputs = document.querySelectorAll('[required]');
+  function updateProgress() {
+    let filled = 0;
+    const checked = new Set();
+    requiredInputs.forEach(inp => {
+      if (inp.type === 'radio') {
+        if (inp.checked) checked.add(inp.name);
+      } else if (inp.value.trim()) {
+        filled++;
+      }
+    });
+    const radioGroups = new Set([...requiredInputs].filter(i => i.type==='radio').map(i=>i.name));
+    const total = [...new Set([...requiredInputs].filter(i=>i.type!=='radio').map(i=>i.name))].length + radioGroups.size;
+    const done = filled + checked.size;
+    const pct = Math.round((done / total) * 100);
+    document.getElementById('progress').style.width = pct + '%';
+    document.getElementById('pct').textContent = pct + '%';
+  }
+  document.addEventListener('change', updateProgress);
+  document.addEventListener('input', updateProgress);
+
+  function handleSubmit() {
+    const btn = document.getElementById('btnSubmit');
+    const loading = document.getElementById('loadingDiv');
+    const submitSection = document.getElementById('submitSection');
+    btn.disabled = true;
+    submitSection.style.display = 'none';
+    loading.style.display = 'block';
+    return true;
+  }
+</script>
+</body>
+</html>
