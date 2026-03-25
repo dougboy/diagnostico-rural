@@ -12,9 +12,14 @@ _local_pkgs = os.path.join(os.path.dirname(__file__), "vendor")
 if _local_pkgs not in sys.path:
     sys.path.insert(0, _local_pkgs)
 
+import smtplib
+import base64
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import encoders
 import anthropic
 import mercadopago
-import resend
 from fpdf import FPDF
 
 # ---------------------------------------------------------------------------
@@ -28,8 +33,9 @@ app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-mude-em-producao")
 
 ANTHROPIC_API_KEY   = os.environ.get("ANTHROPIC_API_KEY", "")
 MERCADOPAGO_TOKEN   = os.environ.get("MERCADOPAGO_ACCESS_TOKEN", "")
-RESEND_API_KEY      = os.environ.get("RESEND_API_KEY", "")
-FROM_EMAIL          = os.environ.get("FROM_EMAIL", "diagnostico@seudominio.com.br")
+GMAIL_USER          = os.environ.get("GMAIL_USER", "")
+GMAIL_APP_PASSWORD  = os.environ.get("GMAIL_APP_PASSWORD", "")
+FROM_EMAIL          = os.environ.get("FROM_EMAIL", GMAIL_USER)
 PRODUCT_PRICE       = float(os.environ.get("PRODUCT_PRICE", "97"))
 BASE_URL            = os.environ.get("BASE_URL", "http://localhost:5000")
 ADMIN_PASSWORD      = os.environ.get("ADMIN_PASSWORD", "admin123")
@@ -471,74 +477,82 @@ def _escrever_paragrafos(pdf: FPDF, texto: str):
 
 
 # ---------------------------------------------------------------------------
-# EMAIL (Resend)
+# EMAIL (Gmail SMTP)
 # ---------------------------------------------------------------------------
+def _smtp_send(to_email: str, subject: str, html_body: str, pdf_path: str = None):
+    """Envia email via Gmail SMTP com App Password."""
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"] = FROM_EMAIL or GMAIL_USER
+    msg["To"] = to_email
+    msg.attach(MIMEText(html_body, "html", "utf-8"))
+
+    if pdf_path:
+        outer = MIMEMultipart("mixed")
+        outer["Subject"] = subject
+        outer["From"] = FROM_EMAIL or GMAIL_USER
+        outer["To"] = to_email
+        outer.attach(MIMEText(html_body, "html", "utf-8"))
+        with open(pdf_path, "rb") as f:
+            part = MIMEBase("application", "octet-stream")
+            part.set_payload(f.read())
+        encoders.encode_base64(part)
+        part.add_header("Content-Disposition", "attachment", filename="Diagnostico_Gestao_Rural.pdf")
+        outer.attach(part)
+        msg = outer
+
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+        server.login(GMAIL_USER, GMAIL_APP_PASSWORD)
+        server.sendmail(GMAIL_USER, to_email, msg.as_string())
+
+
 def _enviar_email_formulario(email: str, name: str, purchase_id: str, form_token: str):
-    resend.api_key = RESEND_API_KEY
     link = f"{BASE_URL}/diagnostico/{purchase_id}"
-    resend.Emails.send({
-        "from": FROM_EMAIL,
-        "to": email,
-        "subject": "✅ Pagamento confirmado — Preencha seu diagnóstico",
-        "html": f"""
-        <div style="font-family:Arial,sans-serif;max-width:580px;margin:0 auto;padding:32px 24px">
-          <div style="background:#1A5C38;padding:20px;border-radius:8px 8px 0 0;text-align:center">
-            <h2 style="color:#fff;margin:0">Pagamento confirmado!</h2>
-          </div>
-          <div style="background:#fff;border:1px solid #e5e5e5;border-top:none;padding:28px;border-radius:0 0 8px 8px">
-            <p>Olá, <strong>{name}</strong>!</p>
-            <p>Seu pagamento foi aprovado. Agora é só preencher o formulário de diagnóstico para eu gerar seu relatório personalizado.</p>
-            <p>O processo leva cerca de <strong>10 a 15 minutos</strong>. Quanto mais detalhado você for, mais preciso e útil será o relatório.</p>
-            <div style="text-align:center;margin:32px 0">
-              <a href="{link}" style="background:#F0A500;color:#1A1A2E;text-decoration:none;padding:16px 32px;border-radius:8px;font-weight:700;font-size:16px">
-                PREENCHER O FORMULÁRIO
-              </a>
-            </div>
-            <p style="color:#777;font-size:13px">Link válido para uso imediato. Se tiver qualquer problema, responda este email.</p>
-            <hr style="border:none;border-top:1px solid #eee;margin:24px 0">
-            <p style="font-size:13px;color:#999">Douglas Lemos<br>MBA FGV | MSc Inovação UFSC</p>
-          </div>
+    html = f"""
+    <div style="font-family:Arial,sans-serif;max-width:580px;margin:0 auto;padding:32px 24px">
+      <div style="background:#1A5C38;padding:20px;border-radius:8px 8px 0 0;text-align:center">
+        <h2 style="color:#fff;margin:0">Pagamento confirmado!</h2>
+      </div>
+      <div style="background:#fff;border:1px solid #e5e5e5;border-top:none;padding:28px;border-radius:0 0 8px 8px">
+        <p>Olá, <strong>{name}</strong>!</p>
+        <p>Seu pagamento foi aprovado. Agora é só preencher o formulário de diagnóstico para eu gerar seu relatório personalizado.</p>
+        <p>O processo leva cerca de <strong>10 a 15 minutos</strong>. Quanto mais detalhado você for, mais preciso e útil será o relatório.</p>
+        <div style="text-align:center;margin:32px 0">
+          <a href="{link}" style="background:#F0A500;color:#1A1A2E;text-decoration:none;padding:16px 32px;border-radius:8px;font-weight:700;font-size:16px">
+            PREENCHER O FORMULÁRIO
+          </a>
         </div>
-        """
-    })
+        <p style="color:#777;font-size:13px">Link válido para uso imediato. Se tiver qualquer problema, responda este email.</p>
+        <hr style="border:none;border-top:1px solid #eee;margin:24px 0">
+        <p style="font-size:13px;color:#999">Douglas Lemos<br>MBA FGV | MSc Inovação UFSC</p>
+      </div>
+    </div>
+    """
+    _smtp_send(email, "Pagamento confirmado - Preencha seu diagnostico", html)
 
 
 def _enviar_relatorio(email: str, name: str, pdf_path: str):
-    resend.api_key = RESEND_API_KEY
-    with open(pdf_path, "rb") as f:
-        pdf_bytes = f.read()
-    import base64
-    pdf_b64 = base64.b64encode(pdf_bytes).decode()
-
-    resend.Emails.send({
-        "from": FROM_EMAIL,
-        "to": email,
-        "subject": "📊 Seu Diagnóstico de Gestão Rural está pronto",
-        "html": f"""
-        <div style="font-family:Arial,sans-serif;max-width:580px;margin:0 auto;padding:32px 24px">
-          <div style="background:#1A5C38;padding:20px;border-radius:8px 8px 0 0;text-align:center">
-            <h2 style="color:#fff;margin:0">Seu relatório está em anexo</h2>
-          </div>
-          <div style="background:#fff;border:1px solid #e5e5e5;border-top:none;padding:28px;border-radius:0 0 8px 8px">
-            <p>Olá, <strong>{name}</strong>!</p>
-            <p>Seu <strong>Diagnóstico de Gestão Rural</strong> personalizado está em anexo a este email.</p>
-            <p>O relatório inclui:</p>
-            <ul>
-              <li>Análise da sua situação atual por área de gestão</li>
-              <li>Pontos críticos e riscos identificados</li>
-              <li>Plano de ação priorizado (30 dias, 2-6 meses, 6-24 meses)</li>
-            </ul>
-            <p>Se tiver dúvidas sobre qualquer ponto do relatório, responda este email diretamente.</p>
-            <hr style="border:none;border-top:1px solid #eee;margin:24px 0">
-            <p style="font-size:13px;color:#999">Douglas Lemos<br>MBA FGV | MSc Inovação UFSC<br>Head de Novos Negócios - Agronegócio</p>
-          </div>
-        </div>
-        """,
-        "attachments": [{
-            "filename": "Diagnostico_Gestao_Rural.pdf",
-            "content": pdf_b64,
-        }]
-    })
+    html = f"""
+    <div style="font-family:Arial,sans-serif;max-width:580px;margin:0 auto;padding:32px 24px">
+      <div style="background:#1A5C38;padding:20px;border-radius:8px 8px 0 0;text-align:center">
+        <h2 style="color:#fff;margin:0">Seu relatório está em anexo</h2>
+      </div>
+      <div style="background:#fff;border:1px solid #e5e5e5;border-top:none;padding:28px;border-radius:0 0 8px 8px">
+        <p>Olá, <strong>{name}</strong>!</p>
+        <p>Seu <strong>Diagnóstico de Gestão Rural</strong> personalizado está em anexo a este email.</p>
+        <p>O relatório inclui:</p>
+        <ul>
+          <li>Análise da sua situação atual por área de gestão</li>
+          <li>Pontos críticos e riscos identificados</li>
+          <li>Plano de ação priorizado (30 dias, 2-6 meses, 6-24 meses)</li>
+        </ul>
+        <p>Se tiver dúvidas sobre qualquer ponto do relatório, responda este email diretamente.</p>
+        <hr style="border:none;border-top:1px solid #eee;margin:24px 0">
+        <p style="font-size:13px;color:#999">Douglas Lemos<br>MBA FGV | MSc Inovação UFSC<br>Head de Novos Negócios - Agronegócio</p>
+      </div>
+    </div>
+    """
+    _smtp_send(email, "Seu Diagnostico de Gestao Rural esta pronto", html, pdf_path=pdf_path)
 
 
 # ---------------------------------------------------------------------------

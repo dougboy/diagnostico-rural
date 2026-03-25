@@ -1,6 +1,5 @@
 flask==3.0.3
 anthropic==0.34.2
 mercadopago==2.2.1
-resend==2.4.0
 fpdf2==2.8.3
 gunicorn==22.0.0
