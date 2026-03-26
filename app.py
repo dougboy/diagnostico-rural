@@ -354,6 +354,7 @@ def _gerar_pdf(diag_id: str, nome_cliente: str, report_text: str, fd: dict) -> s
     pdf_path = f"pdfs/{diag_id}.pdf"
 
     pdf = FPDF()
+    pdf.set_margins(left=15, top=15, right=15)
     pdf.set_auto_page_break(auto=True, margin=20)
     pdf.add_page()
 
@@ -448,9 +449,11 @@ def _gerar_pdf(diag_id: str, nome_cliente: str, report_text: str, fd: dict) -> s
 
     # Rodapé da última página
     pdf.set_y(-20)
+    pdf.set_x(pdf.l_margin)
     pdf.set_font("Helvetica", "I", 8)
     pdf.set_text_color(150, 150, 150)
-    pdf.cell(0, 5, f"Diagnóstico de Gestão Rural  |  {nome_cliente}  |  {datetime.now().strftime('%d/%m/%Y')}  |  Pág. " + str(pdf.page_no()), align="C")
+    w = pdf.w - pdf.l_margin - pdf.r_margin
+    pdf.cell(w, 5, f"Diagnostico de Gestao Rural  |  {nome_cliente}  |  {datetime.now().strftime('%d/%m/%Y')}  |  Pag. " + str(pdf.page_no()), align="C")
 
     pdf.output(pdf_path)
     log.info("PDF gerado: %s", pdf_path)
@@ -459,20 +462,26 @@ def _gerar_pdf(diag_id: str, nome_cliente: str, report_text: str, fd: dict) -> s
 
 def _escrever_paragrafos(pdf: FPDF, texto: str):
     """Escreve texto com suporte a parágrafos e bullets."""
+    lm = pdf.l_margin
+    w = pdf.w - pdf.l_margin - pdf.r_margin
     for linha in texto.split("\n"):
         linha = linha.strip()
         if not linha:
             pdf.ln(3)
             continue
+        pdf.set_x(lm)
         if linha.startswith("- ") or linha.startswith("• "):
-            pdf.set_x(15)
-            pdf.multi_cell(175, 6, "• " + linha[2:], align="L")
+            pdf.set_x(lm + 4)
+            pdf.multi_cell(w - 4, 6, "• " + linha[2:], align="L")
         elif linha.startswith("**") and linha.endswith("**"):
+            pdf.set_x(lm)
             pdf.set_font("Helvetica", "B", 10)
-            pdf.multi_cell(0, 6, linha.strip("**"), align="L")
+            clean = linha[2:-2] if linha.startswith("**") and linha.endswith("**") else linha
+            pdf.multi_cell(w, 6, clean, align="L")
             pdf.set_font("Helvetica", "", 10)
         else:
-            pdf.multi_cell(0, 6, linha, align="J")
+            pdf.set_x(lm)
+            pdf.multi_cell(w, 6, linha, align="L")
     pdf.ln(2)
 
 
