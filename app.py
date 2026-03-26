@@ -40,15 +40,56 @@ PRODUCT_PRICE       = float(os.environ.get("PRODUCT_PRICE", "97"))
 BASE_URL            = os.environ.get("BASE_URL", "http://localhost:5000")
 ADMIN_PASSWORD      = os.environ.get("ADMIN_PASSWORD", "admin123")
 
-DB_PATH = "diagnostico.db"
+DB_PATH     = "diagnostico.db"
+DATABASE_URL = os.environ.get("DATABASE_URL", "")  # Railway PostgreSQL
 
 # ---------------------------------------------------------------------------
-# DATABASE
+# DATABASE — suporta PostgreSQL (produção) e SQLite (local/fallback)
 # ---------------------------------------------------------------------------
+class _DbConn:
+    """Wrapper que normaliza diferenças entre sqlite3 e psycopg2."""
+    def __init__(self):
+        if DATABASE_URL:
+            import psycopg2, psycopg2.extras
+            self._conn = psycopg2.connect(DATABASE_URL)
+            self._pg   = True
+            self._rf   = psycopg2.extras.RealDictCursor
+        else:
+            self._conn = sqlite3.connect(DB_PATH)
+            self._conn.row_factory = sqlite3.Row
+            self._pg   = False
+            self._rf   = None
+
+    def execute(self, sql, params=()):
+        if self._pg:
+            sql = sql.replace("?", "%s")
+            cur = self._conn.cursor(cursor_factory=self._rf)
+        else:
+            cur = self._conn.cursor()
+        cur.execute(sql, params)
+        return cur
+
+    def commit(self):
+        self._conn.commit()
+
+    def close(self):
+        try: self._conn.close()
+        except Exception: pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, *_):
+        try:
+            if exc_type is None: self._conn.commit()
+            else:                self._conn.rollback()
+        finally:
+            self.close()
+
+
 def get_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+    return _DbConn()
+
 
 def init_db():
     with get_db() as db:
