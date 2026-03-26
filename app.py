@@ -237,26 +237,31 @@ def diagnostico_post(purchase_id):
         )
         db.commit()
 
-    try:
-        log.info("Gerando relatório para %s ...", row["email"])
-        report_text = _gerar_relatorio_claude(form_data)
-        pdf_path    = _gerar_pdf(diag_id, row["name"], report_text, form_data)
-        _enviar_relatorio(row["email"], row["name"], pdf_path)
+    # Gera em background para não travar o request (evita timeout Railway)
+    import threading
+    _name  = row["name"]
+    _email = row["email"]
 
-        with get_db() as db:
-            db.execute(
-                "UPDATE diagnostics SET report_text=?, pdf_path=?, status='done' WHERE id=?",
-                (report_text, pdf_path, diag_id)
-            )
-            db.commit()
+    def _gerar_async():
+        try:
+            log.info("Gerando relatório para %s ...", _email)
+            report_text = _gerar_relatorio_claude(form_data)
+            pdf_path    = _gerar_pdf(diag_id, _name, report_text, form_data)
+            _enviar_relatorio(_email, _name, pdf_path)
+            with get_db() as db:
+                db.execute(
+                    "UPDATE diagnostics SET report_text=?, pdf_path=?, status='done' WHERE id=?",
+                    (report_text, pdf_path, diag_id)
+                )
+                db.commit()
+            log.info("Relatório enviado para %s", _email)
+        except Exception as e:
+            log.exception("Erro ao gerar relatório: %s", e)
+            with get_db() as db:
+                db.execute("UPDATE diagnostics SET status='error' WHERE id=?", (diag_id,))
+                db.commit()
 
-        log.info("Relatório enviado para %s", row["email"])
-    except Exception as e:
-        log.exception("Erro ao gerar relatório: %s", e)
-        with get_db() as db:
-            db.execute("UPDATE diagnostics SET status='error' WHERE id=?", (diag_id,))
-            db.commit()
-
+    threading.Thread(target=_gerar_async, daemon=True).start()
     return render_template("obrigado.html", email=row["email"])
 
 
