@@ -607,6 +607,30 @@ def admin():
         diagnostics = db.execute("SELECT * FROM diagnostics ORDER BY created_at DESC LIMIT 50").fetchall()
     return render_template("admin.html", purchases=purchases, diagnostics=diagnostics)
 
+@app.route("/admin/seed-purchase", methods=["POST"])
+def admin_seed_purchase():
+    """Cria registro manual de compra aprovada (uso admin)."""
+    senha = request.args.get("key", "")
+    if senha != ADMIN_PASSWORD:
+        abort(403)
+    data = request.get_json() or {}
+    email = data.get("email", "").strip()
+    name = data.get("name", "").strip()
+    payment_id = data.get("payment_id", "").strip()
+    if not email:
+        return jsonify({"error": "email obrigatorio"}), 400
+    purchase_id = str(uuid.uuid4())
+    form_token = str(uuid.uuid4())
+    with get_db() as db:
+        db.execute(
+            "INSERT INTO purchases (id, email, name, payment_id, status, form_token) VALUES (?,?,?,?,?,?)",
+            (purchase_id, email, name or None, payment_id or None, "approved", form_token)
+        )
+        db.commit()
+    form_url = f"{BASE_URL}/diagnostico/{purchase_id}"
+    return jsonify({"purchase_id": purchase_id, "form_url": form_url, "form_token": form_token})
+
+
 @app.route("/health")
 def health():
     return jsonify({"status": "ok", "ts": datetime.now().isoformat()})
