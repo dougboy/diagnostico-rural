@@ -354,7 +354,23 @@ INSTRUÇÕES DE ESTILO:
 # ---------------------------------------------------------------------------
 # GERAÇÃO DO PDF (fpdf2)
 # ---------------------------------------------------------------------------
+def _sanitize_pdf(t: str) -> str:
+    """Remove caracteres fora do latin-1 para compatibilidade com Helvetica."""
+    subs = {
+        '\u2014': '-', '\u2013': '-',
+        '\u2018': "'", '\u2019': "'",
+        '\u201c': '"', '\u201d': '"',
+        '\u2026': '...', '\u2022': '-',
+        '\u00b7': '.', '\u2012': '-',
+    }
+    for ch, rep in subs.items():
+        t = t.replace(ch, rep)
+    return t.encode('latin-1', errors='replace').decode('latin-1')
+
+
 def _gerar_pdf(diag_id: str, nome_cliente: str, report_text: str, fd: dict) -> str:
+    report_text = _sanitize_pdf(report_text)
+    nome_cliente = _sanitize_pdf(nome_cliente)
     os.makedirs("pdfs", exist_ok=True)
     pdf_path = f"pdfs/{diag_id}.pdf"
 
