@@ -50,14 +50,14 @@
 
 <h2>Compras Recentes</h2>
 <table>
-  <tr><th>Data</th><th>Nome</th><th>Email</th><th>Status</th><th>Payment ID</th></tr>
+  <tr><th>Data</th><th>Nome</th><th>Email</th><th>Status</th><th>Link Formulário</th></tr>
   {% for p in purchases %}
   <tr>
     <td>{{ p.created_at[:16] }}</td>
     <td>{{ p.name or '—' }}</td>
     <td>{{ p.email }}</td>
     <td><span class="badge {{ p.status }}">{{ p.status }}</span></td>
-    <td style="font-size:11px;color:#aaa">{{ p.payment_id or '—' }}</td>
+    <td style="font-size:11px"><a href="/diagnostico/{{ p.id }}" target="_blank" style="color:#1A5C38">/diagnostico/{{ p.id[:8] }}...</a></td>
   </tr>
   {% endfor %}
 </table>
