@@ -9,72 +9,97 @@
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f0; color: #333; }
   header { background: #1a5c38; color: #fff; padding: 16px 24px; display: flex; align-items: center; gap: 12px; }
   header h1 { font-size: 1.2rem; font-weight: 600; }
-  .container { max-width: 1200px; margin: 0 auto; padding: 24px 16px; }
-  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .container { max-width: 1300px; margin: 0 auto; padding: 24px 16px; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 24px; }
   .stat-card { background: #fff; border-radius: 8px; padding: 16px; text-align: center; border: 1px solid #e0e0e0; }
   .stat-card .n { font-size: 2rem; font-weight: 700; color: #1a5c38; }
-  .stat-card .label { font-size: 0.8rem; color: #666; margin-top: 4px; }
+  .stat-card .label { font-size: 0.78rem; color: #666; margin-top: 4px; }
+  .stat-card.warn .n { color: #856404; }
+  .stat-card.danger .n { color: #721c24; }
   table { width: 100%; background: #fff; border-radius: 8px; border-collapse: collapse; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-  th { background: #1a5c38; color: #fff; text-align: left; padding: 12px 14px; font-size: 0.82rem; font-weight: 600; }
-  td { padding: 11px 14px; border-bottom: 1px solid #f0f0f0; font-size: 0.85rem; vertical-align: top; }
+  th { background: #1a5c38; color: #fff; text-align: left; padding: 11px 13px; font-size: 0.8rem; font-weight: 600; }
+  td { padding: 10px 13px; border-bottom: 1px solid #f0f0f0; font-size: 0.83rem; vertical-align: top; }
   tr:last-child td { border-bottom: none; }
   tr:hover td { background: #fafff8; }
-  .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+  .badge { display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: 0.72rem; font-weight: 600; }
   .badge-done { background: #d4edda; color: #155724; }
   .badge-processing { background: #fff3cd; color: #856404; }
   .badge-error { background: #f8d7da; color: #721c24; }
   .badge-pending { background: #e2e3e5; color: #383d41; }
   .badge-approved { background: #d4edda; color: #155724; }
   .badge-waiting { background: #fff3cd; color: #856404; }
-  .btn { display: inline-block; padding: 5px 12px; border-radius: 5px; font-size: 0.78rem; cursor: pointer; border: 1px solid transparent; font-weight: 500; text-decoration: none; }
+  .badge-mp { background: #009ee3; color: #fff; }
+  .badge-manual { background: #ffe082; color: #5d4037; }
+  .btn { display: inline-block; padding: 4px 10px; border-radius: 5px; font-size: 0.75rem; cursor: pointer; border: 1px solid transparent; font-weight: 500; text-decoration: none; }
   .btn-pdf { background: #1a5c38; color: #fff; }
-  .btn-pdf:hover { background: #145230; }
   .btn-email { background: #0d6efd; color: #fff; }
-  .btn-email:hover { background: #0a58ca; }
   .btn-copy { background: #6c757d; color: #fff; }
-  .btn-copy:hover { background: #5a6268; }
-  .btn-sm { padding: 4px 9px; font-size: 0.73rem; }
-  .actions { display: flex; gap: 5px; flex-wrap: wrap; }
-  .toast { position: fixed; bottom: 24px; right: 24px; background: #333; color: #fff; padding: 12px 20px; border-radius: 8px; font-size: 0.9rem; z-index: 9999; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+  .btn-mp { background: #009ee3; color: #fff; }
+  .btn-danger { background: #dc3545; color: #fff; }
+  .btn-light { background: #e9ecef; color: #333; border: 1px solid #ccc; }
+  .actions { display: flex; gap: 4px; flex-wrap: wrap; }
+  .toast { position: fixed; bottom: 24px; right: 24px; background: #333; color: #fff; padding: 12px 20px; border-radius: 8px; font-size: 0.88rem; z-index: 9999; opacity: 0; transition: opacity 0.3s; pointer-events: none; max-width: 360px; }
   .toast.show { opacity: 1; }
-  .section-title { font-size: 1rem; font-weight: 600; color: #1a5c38; margin-bottom: 12px; margin-top: 28px; }
-  .text-muted { color: #888; font-style: italic; }
+  .section-title { font-size: 0.95rem; font-weight: 700; color: #1a5c38; margin-bottom: 10px; margin-top: 28px; display: flex; align-items: center; gap: 8px; }
+  .section-title small { font-size: 0.75rem; color: #888; font-weight: 400; }
+  .text-muted { color: #888; font-style: italic; font-size: 0.85rem; padding: 8px 0; }
   .name-cell { font-weight: 500; }
-  .email-cell { color: #555; font-size: 0.8rem; }
-  .empty-state { text-align: center; padding: 40px; color: #888; }
+  .email-cell { color: #555; font-size: 0.78rem; }
+  .mp-popup { display: none; background: #f0f8ff; border: 1px solid #009ee3; border-radius: 6px; padding: 10px 14px; margin-top: 6px; font-size: 0.8rem; line-height: 1.7; }
+  .mp-popup.show { display: block; }
+  .mp-section { background: #fff; border-radius: 8px; padding: 18px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+  .mp-row { display: flex; gap: 24px; flex-wrap: wrap; align-items: center; padding: 10px 0; border-bottom: 1px solid #f0f0f0; font-size: 0.84rem; }
+  .mp-row:last-child { border-bottom: none; }
+  .mp-val { font-weight: 600; color: #1a5c38; font-size: 1rem; }
+  .alert-manual { background: #fff8e1; border: 1px solid #ffe082; border-radius: 6px; padding: 10px 16px; font-size: 0.83rem; color: #5d4037; margin-bottom: 16px; }
 </style>
 </head>
 <body>
 <header>
-  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
   <h1>Painel Admin &mdash; Diagnostico de Gestao Rural</h1>
+  <div style="margin-left:auto;display:flex;gap:8px">
+    <button class="btn btn-mp" onclick="carregarPagamentosMP()">&#8635; Verificar MP</button>
+  </div>
 </header>
 
 <div class="container">
+
+  {% set n_manual = diagnostics | selectattr("payment_source", "ne", "mercadopago") | list | length %}
+  {% if n_manual > 0 %}
+  <div class="alert-manual">
+    &#9888; <strong>{{ n_manual }} registro(s) de teste</strong> encontrado(s) no banco (criados manualmente, nao via pagamento real). Eles aparecem na tabela marcados com a badge <span class="badge badge-manual">Teste</span> e <strong>nao entram</strong> no calculo de receita.
+  </div>
+  {% endif %}
+
   <div class="stats">
     <div class="stat-card">
       <div class="n">{{ total_purchases }}</div>
-      <div class="label">Pagamentos aprovados</div>
+      <div class="label">Pagamentos MP reais</div>
     </div>
     <div class="stat-card">
       <div class="n">{{ total_done }}</div>
       <div class="label">Relatorios gerados</div>
     </div>
-    <div class="stat-card">
+    <div class="stat-card {% if total_error > 0 %}danger{% endif %}">
+      <div class="n">{{ total_error }}</div>
+      <div class="label">Com erro</div>
+    </div>
+    <div class="stat-card {% if total_processing > 0 %}warn{% endif %}">
       <div class="n">{{ total_processing }}</div>
       <div class="label">Em processamento</div>
     </div>
     <div class="stat-card">
-      <div class="n">{{ total_error }}</div>
-      <div class="label">Com erro</div>
-    </div>
-    <div class="stat-card">
       <div class="n">R$ {{ receita }}</div>
-      <div class="label">Receita total</div>
+      <div class="label">Receita real (MP)</div>
     </div>
   </div>
 
-  <div class="section-title">Diagnosticos</div>
+  <div class="section-title">
+    Diagnosticos
+    <small>ordenado por data decrescente</small>
+  </div>
+
   {% if diagnostics %}
   <table>
     <thead>
@@ -82,6 +107,7 @@
         <th>Cliente</th>
         <th>Data</th>
         <th>Pagamento</th>
+        <th>Origem</th>
         <th>Relatorio</th>
         <th>Acoes</th>
       </tr>
@@ -93,11 +119,21 @@
           <div class="name-cell">{{ d.name or '-' }}</div>
           <div class="email-cell">{{ d.email }}</div>
         </td>
-        <td>{{ d.created_at[:16] if d.created_at else '-' }}</td>
+        <td style="white-space:nowrap">{{ d.created_at[:16] if d.created_at else '-' }}</td>
         <td>
           <span class="badge badge-{{ 'approved' if d.pstatus == 'approved' else 'waiting' }}">
             {{ 'Aprovado' if d.pstatus == 'approved' else d.pstatus or '-' }}
           </span>
+        </td>
+        <td>
+          {% if d.payment_source == 'mercadopago' %}
+            <span class="badge badge-mp">&#10003; MP</span>
+          {% else %}
+            <span class="badge badge-manual">Teste</span>
+          {% endif %}
+          {% if d.payment_id and d.payment_id != 'None' %}
+            <div id="mp-detail-{{ d.payment_id }}" class="mp-popup"></div>
+          {% endif %}
         </td>
         <td>
           {% if d.diag_status == 'done' %}
@@ -107,19 +143,22 @@
           {% elif d.diag_status == 'error' %}
             <span class="badge badge-error">Erro</span>
           {% else %}
-            <span class="badge badge-pending">{{ d.diag_status or 'Aguardando formulario' }}</span>
+            <span class="badge badge-pending">Sem formulario</span>
           {% endif %}
         </td>
         <td>
           <div class="actions">
             {% if d.diag_id %}
-              <a href="/admin/pdf/{{ d.diag_id }}?key={{ admin_key }}" target="_blank" class="btn btn-pdf btn-sm">PDF</a>
-              <button class="btn btn-email btn-sm" onclick="enviarEmail('{{ d.diag_id }}')">Reenviar Email</button>
+              <a href="/admin/pdf/{{ d.diag_id }}?key={{ admin_key }}" target="_blank" class="btn btn-pdf">PDF</a>
+              <button class="btn btn-email" onclick="enviarEmail('{{ d.diag_id }}')">Reenviar</button>
               {% if d.report_text %}
-              <button class="btn btn-copy btn-sm" onclick="copiarRelatorio('{{ d.diag_id }}')">Copiar Texto</button>
+                <button class="btn btn-copy" onclick="copiarRelatorio('{{ d.diag_id }}')">Copiar</button>
               {% endif %}
             {% endif %}
-            <a href="/meu-relatorio/{{ d.purchase_id }}" target="_blank" class="btn btn-sm" style="background:#e9ecef;color:#333">Area Cliente</a>
+            {% if d.payment_id and d.payment_id != 'None' %}
+              <button class="btn btn-mp" onclick="verificarMP('{{ d.payment_id }}')">Ver MP</button>
+            {% endif %}
+            <a href="/meu-relatorio/{{ d.purchase_id }}" target="_blank" class="btn btn-light">Cliente</a>
           </div>
         </td>
       </tr>
@@ -127,20 +166,22 @@
     </tbody>
   </table>
   {% else %}
-  <div class="empty-state">Nenhum diagnostico registrado ainda.</div>
+  <p class="text-muted">Nenhum diagnostico registrado ainda.</p>
   {% endif %}
 
-  <div class="section-title">Pagamentos sem diagnostico</div>
+  <div class="section-title">
+    Pagamentos reais - Mercado Pago
+    <small><button class="btn btn-mp" onclick="carregarPagamentosMP()" style="margin-left:8px">Buscar ultimos 30 dias</button></small>
+  </div>
+  <div class="mp-section" id="mp-section">
+    <p class="text-muted">Clique em "Buscar" para consultar o Mercado Pago diretamente.</p>
+  </div>
+
   {% if pending_purchases %}
+  <div class="section-title">Pagamentos aguardando formulario</div>
   <table>
     <thead>
-      <tr>
-        <th>Cliente</th>
-        <th>Email</th>
-        <th>Data</th>
-        <th>Status</th>
-        <th>Link Formulario</th>
-      </tr>
+      <tr><th>Cliente</th><th>Email</th><th>Data</th><th>Origem</th><th>Link</th></tr>
     </thead>
     <tbody>
       {% for p in pending_purchases %}
@@ -148,20 +189,24 @@
         <td>{{ p.name or '-' }}</td>
         <td>{{ p.email }}</td>
         <td>{{ p.created_at[:16] if p.created_at else '-' }}</td>
-        <td><span class="badge badge-{{ 'approved' if p.status == 'approved' else 'waiting' }}">{{ p.status }}</span></td>
-        <td><a href="/diagnostico/{{ p.id }}" target="_blank" class="btn btn-sm btn-pdf">Abrir Form</a></td>
+        <td>
+          {% if p.payment_source == 'mercadopago' %}
+            <span class="badge badge-mp">MP</span>
+          {% else %}
+            <span class="badge badge-manual">Teste</span>
+          {% endif %}
+        </td>
+        <td><a href="/diagnostico/{{ p.id }}" target="_blank" class="btn btn-pdf">Abrir Form</a></td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
-  {% else %}
-  <p class="text-muted" style="padding:8px 0">Nenhum pagamento pendente de formulario.</p>
   {% endif %}
+
 </div>
 
 <div class="toast" id="toast"></div>
 
-<!-- Hidden containers for report texts -->
 {% for d in diagnostics %}
 {% if d.report_text %}
 <div id="rtext-{{ d.diag_id }}" style="display:none">{{ d.report_text }}</div>
@@ -176,26 +221,23 @@ function showToast(msg, ok=true) {
     t.textContent = msg;
     t.style.background = ok ? '#1a5c38' : '#c0392b';
     t.classList.add('show');
-    setTimeout(() => t.classList.remove('show'), 3500);
+    setTimeout(() => t.classList.remove('show'), 4000);
 }
 
 function enviarEmail(diagId) {
-    fetch('/admin/enviar-email/' + diagId + '?key=' + ADMIN_KEY, {method: 'POST'})
+    showToast('Enviando...', true);
+    fetch('/admin/enviar-email/' + diagId + '?key=' + ADMIN_KEY, {method:'POST'})
         .then(r => r.json())
-        .then(d => {
-            if (d.ok) showToast(d.msg);
-            else showToast('Erro: ' + d.erro, false);
-        })
-        .catch(e => showToast('Falha na requisicao: ' + e, false));
+        .then(d => d.ok ? showToast(d.msg) : showToast('Erro: ' + d.erro, false))
+        .catch(e => showToast('Falha: ' + e, false));
 }
 
 function copiarRelatorio(diagId) {
     const el = document.getElementById('rtext-' + diagId);
     if (!el) { showToast('Texto nao disponivel', false); return; }
     navigator.clipboard.writeText(el.textContent.trim())
-        .then(() => showToast('Texto copiado para a area de transferencia!'))
+        .then(() => showToast('Texto copiado!'))
         .catch(() => {
-            // Fallback
             const ta = document.createElement('textarea');
             ta.value = el.textContent.trim();
             document.body.appendChild(ta);
@@ -204,6 +246,50 @@ function copiarRelatorio(diagId) {
             document.body.removeChild(ta);
             showToast('Texto copiado!');
         });
+}
+
+function verificarMP(paymentId) {
+    const el = document.getElementById('mp-detail-' + paymentId);
+    if (!el) { showToast('ID nao encontrado', false); return; }
+    if (el.classList.contains('show')) { el.classList.remove('show'); return; }
+    el.textContent = 'Consultando Mercado Pago...';
+    el.classList.add('show');
+    fetch('/admin/mp-verificar/' + paymentId + '?key=' + ADMIN_KEY)
+        .then(r => r.json())
+        .then(d => {
+            if (!d.ok) { el.textContent = 'Erro: ' + d.erro; return; }
+            el.innerHTML = `
+                <strong>Status MP:</strong> ${d.status} (${d.status_detail || '-'})<br>
+                <strong>Valor:</strong> R$ ${d.valor} ${d.moeda || ''}<br>
+                <strong>Pagador:</strong> ${d.pagador_email || '-'}<br>
+                <strong>Data aprovacao:</strong> ${d.data ? new Date(d.data).toLocaleString('pt-BR') : '-'}<br>
+                <strong>Metodo:</strong> ${d.metodo || '-'}
+            `;
+        })
+        .catch(e => { el.textContent = 'Erro de conexao: ' + e; });
+}
+
+function carregarPagamentosMP() {
+    const section = document.getElementById('mp-section');
+    section.innerHTML = '<p class="text-muted">Buscando no Mercado Pago...</p>';
+    fetch('/admin/mp-pagamentos?key=' + ADMIN_KEY)
+        .then(r => r.json())
+        .then(d => {
+            if (!d.ok) { section.innerHTML = '<p class="text-muted">Erro: ' + d.erro + '</p>'; return; }
+            if (!d.pagamentos.length) { section.innerHTML = '<p class="text-muted">Nenhum pagamento aprovado nos ultimos 30 dias.</p>'; return; }
+            let html = `<p style="font-size:.82rem;color:#666;margin-bottom:14px"><strong>Total: ${d.total} pagamentos | Receita real: R$ ${d.receita_real.toFixed(2)}</strong></p>`;
+            d.pagamentos.forEach(p => {
+                html += `<div class="mp-row">
+                    <div><span class="badge badge-mp">MP #${p.id}</span></div>
+                    <div class="mp-val">R$ ${p.valor}</div>
+                    <div>${p.pagador || '-'}</div>
+                    <div style="color:#888">${p.data ? new Date(p.data).toLocaleString('pt-BR') : '-'}</div>
+                    <div style="color:#888">${p.descricao || '-'}</div>
+                </div>`;
+            });
+            section.innerHTML = html;
+        })
+        .catch(e => { section.innerHTML = '<p class="text-muted">Erro: ' + e + '</p>'; });
 }
 </script>
 </body>
