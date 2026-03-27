@@ -36,6 +36,7 @@ MERCADOPAGO_TOKEN   = os.environ.get("MERCADOPAGO_ACCESS_TOKEN", "")
 GMAIL_USER          = os.environ.get("GMAIL_USER", "")
 GMAIL_APP_PASSWORD  = os.environ.get("GMAIL_APP_PASSWORD", "")
 FROM_EMAIL          = os.environ.get("FROM_EMAIL", GMAIL_USER)
+APPS_SCRIPT_WEBHOOK_URL = os.environ.get("APPS_SCRIPT_WEBHOOK_URL", "")
 PRODUCT_PRICE       = float(os.environ.get("PRODUCT_PRICE", "97"))
 BASE_URL            = os.environ.get("BASE_URL", "http://localhost:5000")
 ADMIN_PASSWORD      = os.environ.get("ADMIN_PASSWORD", "admin123")
@@ -663,50 +664,37 @@ def _enviar_email_formulario(email: str, name: str, purchase_id: str, form_token
 
 
 def _enviar_relatorio(email: str, name: str, pdf_path: str) -> None:
-    """Envia email com PDF via Resend API (HTTP, sem dependencia SMTP)."""
+    """Envia email com PDF via Google Apps Script webhook (HTTP POST, sem SMTP)."""
     import urllib.request as _urllib_req
     import base64 as _b64
     import json as _json
 
-    if not RESEND_API_KEY:
-        raise RuntimeError("RESEND_API_KEY nao configurada no Railway")
+    if not APPS_SCRIPT_WEBHOOK_URL:
+        raise RuntimeError("APPS_SCRIPT_WEBHOOK_URL nao configurada no Railway")
 
     with open(pdf_path, "rb") as fh:
         pdf_b64 = _b64.b64encode(fh.read()).decode()
 
-    html_body = (
-        f"<p>Ol\u00e1 <strong>{name}</strong>,</p>"
-        "<p>Seu <strong>Diagn\u00f3stico de Gest\u00e3o Rural</strong> est\u00e1 pronto!</p>"
-        "<p>Voc\u00ea encontra o relat\u00f3rio completo em anexo.</p>"
-        "<p>Qualquer d\u00favida, basta responder este email.</p>"
-        "<br><p>Abra\u00e7os,<br><strong>Douglas Lemos</strong></p>"
-    )
-
     payload = _json.dumps({
-        "from": FROM_EMAIL,
-        "to": [email],
-        "subject": "Seu Diagn\u00f3stico de Gest\u00e3o Rural est\u00e1 pronto!",
-        "html": html_body,
-        "attachments": [{
-            "filename": "Diagnostico-Gestao-Rural.pdf",
-            "content": pdf_b64,
-        }],
+        "secret": "diag-rural-wh-2026",
+        "to": email,
+        "name": name,
+        "pdf_base64": pdf_b64,
     }).encode("utf-8")
 
     req = _urllib_req.Request(
-        "https://api.resend.com/emails",
+        APPS_SCRIPT_WEBHOOK_URL,
         data=payload,
-        headers={
-            "Authorization": f"Bearer {RESEND_API_KEY}",
-            "Content-Type": "application/json",
-        },
+        headers={"Content-Type": "application/json"},
         method="POST",
     )
-    with _urllib_req.urlopen(req, timeout=30) as resp:
+    with _urllib_req.urlopen(req, timeout=60) as resp:
         result = _json.loads(resp.read())
-    log.info("Email enviado via Resend para %s | id=%s", email, result.get("id"))
 
+    if not result.get("ok"):
+        raise RuntimeError(f"Apps Script erro: {result.get('error')}")
 
+    log.info("Email enviado via Apps Script para %s", email)
 def _verificar_pagamento_manual(purchase_id: str):
     """Tenta confirmar pagamento via Mercado Pago quando o usuário volta pelo back_url."""
     try:
