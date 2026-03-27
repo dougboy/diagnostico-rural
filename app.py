@@ -724,9 +724,38 @@ def admin():
     if senha != ADMIN_PASSWORD:
         abort(403)
     with get_db() as db:
-        purchases   = db.execute("SELECT * FROM purchases ORDER BY created_at DESC LIMIT 50").fetchall()
-        diagnostics = db.execute("SELECT * FROM diagnostics ORDER BY created_at DESC LIMIT 50").fetchall()
-    return render_template("admin.html", purchases=purchases, diagnostics=diagnostics)
+        # Diagnosticos com dados de purchase join
+        rows = db.execute(
+            "SELECT p.id as purchase_id, p.email, p.name, p.status as pstatus, p.created_at, "
+            "d.id as diag_id, d.status as diag_status, d.report_text "
+            "FROM purchases p "
+            "LEFT JOIN diagnostics d ON d.purchase_id = p.id "
+            "ORDER BY p.created_at DESC LIMIT 100"
+        ).fetchall()
+        # Purchases sem diagnostico
+        pending = db.execute(
+            "SELECT p.* FROM purchases p "
+            "LEFT JOIN diagnostics d ON d.purchase_id = p.id "
+            "WHERE d.id IS NULL AND p.status = 'approved' "
+            "ORDER BY p.created_at DESC"
+        ).fetchall()
+    # Stats
+    approved = [r for r in rows if r["pstatus"] == "approved"]
+    total_purchases = len(set(r["purchase_id"] for r in approved))
+    total_done = len([r for r in rows if r["diag_status"] == "done"])
+    total_processing = len([r for r in rows if r["diag_status"] == "processing"])
+    total_error = len([r for r in rows if r["diag_status"] == "error"])
+    receita = total_purchases * 97
+    return render_template("admin.html",
+        diagnostics=rows,
+        pending_purchases=pending,
+        total_purchases=total_purchases,
+        total_done=total_done,
+        total_processing=total_processing,
+        total_error=total_error,
+        receita=receita,
+        admin_key=senha
+    )
 
 @app.route("/admin/seed-purchase", methods=["POST"])
 def admin_seed_purchase():
