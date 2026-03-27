@@ -721,20 +721,37 @@ def admin_seed_purchase():
 
 @app.route("/admin/pdf/<diag_id>")
 def admin_pdf(diag_id):
-    """Serve o PDF gerado para visualização no admin."""
+    """Serve ou regenera PDF do diagnostico para visualizacao admin."""
     senha = request.args.get("key", "")
     if senha != ADMIN_PASSWORD:
         abort(403)
     with get_db() as db:
-        cur = db.execute("SELECT pdf_path FROM diagnostics WHERE id=?", (diag_id,))
+        cur = db.execute(
+            "SELECT d.pdf_path, d.report_text, p.name FROM diagnostics d "
+            "JOIN purchases p ON p.id = d.purchase_id WHERE d.id=?", (diag_id,)
+        )
         row = cur.fetchone()
-    if not row or not row["pdf_path"]:
+    if not row:
         abort(404)
     pdf_path = row["pdf_path"]
-    if not os.path.exists(pdf_path):
+    # Se PDF existe no disco, serve direto
+    if pdf_path and os.path.exists(pdf_path):
+        from flask import send_file
+        return send_file(pdf_path, mimetype="application/pdf", as_attachment=False)
+    # Senao, regenera do report_text salvo no banco
+    if not row["report_text"]:
         abort(404)
+    import tempfile
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+    tmp.close()
+    form_data = {"_name": row["name"] or "Cliente"}
+    try:
+        new_path = _gerar_pdf(diag_id, row["name"] or "Cliente", row["report_text"], form_data)
+    except Exception as e:
+        log.exception("Erro ao regenerar PDF: %s", e)
+        abort(500)
     from flask import send_file
-    return send_file(pdf_path, mimetype="application/pdf", as_attachment=False)
+    return send_file(new_path, mimetype="application/pdf", as_attachment=False)
 
 
 @app.route("/health")
