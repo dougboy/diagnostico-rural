@@ -719,6 +719,24 @@ def admin_seed_purchase():
     return jsonify({"purchase_id": purchase_id, "form_url": form_url, "form_token": form_token})
 
 
+@app.route("/admin/pdf/<diag_id>")
+def admin_pdf(diag_id):
+    """Serve o PDF gerado para visualização no admin."""
+    senha = request.args.get("key", "")
+    if senha != ADMIN_PASSWORD:
+        abort(403)
+    with get_db() as db:
+        cur = db.execute("SELECT pdf_path FROM diagnostics WHERE id=?", (diag_id,))
+        row = cur.fetchone()
+    if not row or not row["pdf_path"]:
+        abort(404)
+    pdf_path = row["pdf_path"]
+    if not os.path.exists(pdf_path):
+        abort(404)
+    from flask import send_file
+    return send_file(pdf_path, mimetype="application/pdf", as_attachment=False)
+
+
 @app.route("/health")
 def health():
     return jsonify({"status": "ok", "ts": datetime.now().isoformat()})
