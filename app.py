@@ -285,22 +285,29 @@ def diagnostico_post(purchase_id):
 
     def _gerar_async():
         try:
-            log.info("Gerando relatório para %s ...", _email)
+            log.info("Gerando relatorio para %s ...", _email)
             report_text = _gerar_relatorio_claude(form_data)
             pdf_path    = _gerar_pdf(diag_id, _name, report_text, form_data)
-            _enviar_relatorio(_email, _name, pdf_path)
+            # Marca done apos PDF gerado — falha de email nao deve reverter
             with get_db() as db:
                 db.execute(
                     "UPDATE diagnostics SET report_text=?, pdf_path=?, status='done' WHERE id=?",
                     (report_text, pdf_path, diag_id)
                 )
                 db.commit()
-            log.info("Relatório enviado para %s", _email)
+            log.info("Relatorio gerado para %s", _email)
         except Exception as e:
-            log.exception("Erro ao gerar relatório: %s", e)
+            log.exception("Erro ao gerar relatorio: %s", e)
             with get_db() as db:
                 db.execute("UPDATE diagnostics SET status='error' WHERE id=?", (diag_id,))
                 db.commit()
+            return
+        # Email separado — falha nao-fatal
+        try:
+            _enviar_relatorio(_email, _name, pdf_path)
+            log.info("Relatorio enviado para %s", _email)
+        except Exception as e:
+            log.warning("Falha ao enviar email para %s: %s", _email, e)
 
     threading.Thread(target=_gerar_async, daemon=True).start()
     return render_template("obrigado.html", email=row["email"])
