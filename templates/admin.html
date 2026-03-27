@@ -65,7 +65,7 @@
 
 <div class="container">
 
-  {% set n_manual = diagnostics | selectattr("payment_source", "ne", "mercadopago") | list | length %}
+  {% set n_manual = diagnostics | rejectattr("payment_source", "equalto", "mercadopago") | list | length %}
   {% if n_manual > 0 %}
   <div class="alert-manual">
     &#9888; <strong>{{ n_manual }} registro(s) de teste</strong> encontrado(s) no banco (criados manualmente, nao via pagamento real). Eles aparecem na tabela marcados com a badge <span class="badge badge-manual">Teste</span> e <strong>nao entram</strong> no calculo de receita.
@@ -126,12 +126,12 @@
           </span>
         </td>
         <td>
-          {% if d.payment_source == 'mercadopago' %}
+          {% if (d.payment_source or "") == 'mercadopago' %}
             <span class="badge badge-mp">&#10003; MP</span>
           {% else %}
             <span class="badge badge-manual">Teste</span>
           {% endif %}
-          {% if d.payment_id and d.payment_id != 'None' %}
+          {% if d.payment_id and d.payment_id != "None" and d.payment_id != "" %}
             <div id="mp-detail-{{ d.payment_id }}" class="mp-popup"></div>
           {% endif %}
         </td>
@@ -155,7 +155,7 @@
                 <button class="btn btn-copy" onclick="copiarRelatorio('{{ d.diag_id }}')">Copiar</button>
               {% endif %}
             {% endif %}
-            {% if d.payment_id and d.payment_id != 'None' %}
+            {% if d.payment_id and d.payment_id not in ("None", "", None) %}
               <button class="btn btn-mp" onclick="verificarMP('{{ d.payment_id }}')">Ver MP</button>
             {% endif %}
             <a href="/meu-relatorio/{{ d.purchase_id }}" target="_blank" class="btn btn-light">Cliente</a>
@@ -190,7 +190,7 @@
         <td>{{ p.email }}</td>
         <td>{{ p.created_at[:16] if p.created_at else '-' }}</td>
         <td>
-          {% if p.payment_source == 'mercadopago' %}
+          {% if (p.payment_source or "") == 'mercadopago' %}
             <span class="badge badge-mp">MP</span>
           {% else %}
             <span class="badge badge-manual">Teste</span>
