@@ -662,33 +662,51 @@ def _enviar_email_formulario(email: str, name: str, purchase_id: str, form_token
     _smtp_send(email, "Pagamento confirmado - Preencha seu diagnostico", html)
 
 
-def _enviar_relatorio(email: str, name: str, pdf_path: str):
-    html = f"""
-    <div style="font-family:Arial,sans-serif;max-width:580px;margin:0 auto;padding:32px 24px">
-      <div style="background:#1A5C38;padding:20px;border-radius:8px 8px 0 0;text-align:center">
-        <h2 style="color:#fff;margin:0">Seu relatório está em anexo</h2>
-      </div>
-      <div style="background:#fff;border:1px solid #e5e5e5;border-top:none;padding:28px;border-radius:0 0 8px 8px">
-        <p>Olá, <strong>{name}</strong>!</p>
-        <p>Seu <strong>Diagnóstico de Gestão Rural</strong> personalizado está em anexo a este email.</p>
-        <p>O relatório inclui:</p>
-        <ul>
-          <li>Análise da sua situação atual por área de gestão</li>
-          <li>Pontos críticos e riscos identificados</li>
-          <li>Plano de ação priorizado (30 dias, 2-6 meses, 6-24 meses)</li>
-        </ul>
-        <p>Se tiver dúvidas sobre qualquer ponto do relatório, responda este email diretamente.</p>
-        <hr style="border:none;border-top:1px solid #eee;margin:24px 0">
-        <p style="font-size:13px;color:#999">Douglas Lemos<br>MBA FGV | MSc Inovação UFSC<br>Head de Novos Negócios - Agronegócio</p>
-      </div>
-    </div>
-    """
-    _smtp_send(email, "Seu Diagnostico de Gestao Rural esta pronto", html, pdf_path=pdf_path)
+def _enviar_relatorio(email: str, name: str, pdf_path: str) -> None:
+    """Envia email com PDF via Resend API (HTTP, sem dependencia SMTP)."""
+    import urllib.request as _urllib_req
+    import base64 as _b64
+    import json as _json
+
+    if not RESEND_API_KEY:
+        raise RuntimeError("RESEND_API_KEY nao configurada no Railway")
+
+    with open(pdf_path, "rb") as fh:
+        pdf_b64 = _b64.b64encode(fh.read()).decode()
+
+    html_body = (
+        f"<p>Ol\u00e1 <strong>{name}</strong>,</p>"
+        "<p>Seu <strong>Diagn\u00f3stico de Gest\u00e3o Rural</strong> est\u00e1 pronto!</p>"
+        "<p>Voc\u00ea encontra o relat\u00f3rio completo em anexo.</p>"
+        "<p>Qualquer d\u00favida, basta responder este email.</p>"
+        "<br><p>Abra\u00e7os,<br><strong>Douglas Lemos</strong></p>"
+    )
+
+    payload = _json.dumps({
+        "from": FROM_EMAIL,
+        "to": [email],
+        "subject": "Seu Diagn\u00f3stico de Gest\u00e3o Rural est\u00e1 pronto!",
+        "html": html_body,
+        "attachments": [{
+            "filename": "Diagnostico-Gestao-Rural.pdf",
+            "content": pdf_b64,
+        }],
+    }).encode("utf-8")
+
+    req = _urllib_req.Request(
+        "https://api.resend.com/emails",
+        data=payload,
+        headers={
+            "Authorization": f"Bearer {RESEND_API_KEY}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    with _urllib_req.urlopen(req, timeout=30) as resp:
+        result = _json.loads(resp.read())
+    log.info("Email enviado via Resend para %s | id=%s", email, result.get("id"))
 
 
-# ---------------------------------------------------------------------------
-# HELPERS
-# ---------------------------------------------------------------------------
 def _verificar_pagamento_manual(purchase_id: str):
     """Tenta confirmar pagamento via Mercado Pago quando o usuário volta pelo back_url."""
     try:
