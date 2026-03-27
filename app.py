@@ -629,7 +629,7 @@ def _smtp_send(to_email: str, subject: str, html_body: str, pdf_path: str = None
         outer.attach(part)
         msg = outer
 
-    with smtplib.SMTP("smtp.gmail.com", 587) as server:
+    with smtplib.SMTP("smtp.gmail.com", 587, timeout=30) as server:
         server.ehlo()
         server.starttls()
         server.ehlo()
@@ -733,7 +733,7 @@ def admin():
     with get_db() as db:
         # Diagnosticos com dados de purchase join
         rows = db.execute(
-            "SELECT p.id as purchase_id, p.email, p.name, p.status as pstatus, p.created_at, "
+            "SELECT p.id as purchase_id, p.email, p.name, p.status as pstatus, p.payment_source, p.created_at, "
             "d.id as diag_id, d.status as diag_status, d.report_text "
             "FROM purchases p "
             "LEFT JOIN diagnostics d ON d.purchase_id = p.id "
@@ -748,11 +748,11 @@ def admin():
         ).fetchall()
     # Stats
     approved = [r for r in rows if r["pstatus"] == "approved"]
-    total_purchases = len(set(r["purchase_id"] for r in approved if r.get("payment_source") == "mercadopago"))
+    total_purchases = len(set(r["purchase_id"] for r in approved if (r["payment_source"] or "") == "mercadopago"))
     total_done = len([r for r in rows if r["diag_status"] == "done"])
     total_processing = len([r for r in rows if r["diag_status"] == "processing"])
     total_error = len([r for r in rows if r["diag_status"] == "error"])
-    total_real = len([r for r in rows if r["payment_source"] == "mercadopago" and r["pstatus"] == "approved"])
+    total_real = len([r for r in rows if (r["payment_source"] or "") == "mercadopago" and r["pstatus"] == "approved"])
     receita = total_real * 97
     return render_template("admin.html",
         diagnostics=rows,
@@ -861,12 +861,30 @@ def admin_enviar_email(diag_id):
         except Exception as e:
             log.exception("Erro ao regenerar PDF: %s", e)
             return jsonify({"ok": False, "erro": f"Falha ao gerar PDF: {e}"}), 500
-    try:
-        _enviar_relatorio(row["email"], row["name"] or "Cliente", pdf_path)
-        return jsonify({"ok": True, "msg": f"Email reenviado para {row['email']}"})
-    except Exception as e:
-        log.exception("Erro ao reenviar email: %s", e)
-        return jsonify({"ok": False, "erro": str(e)}), 500
+    import threading as _threading
+    _email_local = row["email"]
+    _name_local = row["name"] or "Cliente"
+    _pdf_local = pdf_path
+    _result = {"ok": None, "msg": None}
+    def _send():
+        try:
+            _enviar_relatorio(_email_local, _name_local, _pdf_local)
+            _result["ok"] = True
+            _result["msg"] = f"Email reenviado para {_email_local}"
+            log.info("Email reenviado com sucesso para %s", _email_local)
+        except Exception as e:
+            _result["ok"] = False
+            _result["msg"] = str(e)
+            log.warning("Falha ao reenviar email para %s: %s", _email_local, e)
+    t = _threading.Thread(target=_send)
+    t.start()
+    t.join(timeout=40)
+    if _result["ok"] is True:
+        return jsonify({"ok": True, "msg": _result["msg"]})
+    elif _result["ok"] is False:
+        return jsonify({"ok": False, "erro": _result["msg"]}), 500
+    else:
+        return jsonify({"ok": False, "erro": "Timeout ao enviar email (>40s). Verifique SMTP."}), 500
 
 
 @app.route("/meu-relatorio/<purchase_id>")
