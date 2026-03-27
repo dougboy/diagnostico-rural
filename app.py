@@ -391,12 +391,22 @@ INSTRUÇÕES DE ESTILO:
 - Total esperado: 2.000 a 2.500 palavras.
 """
 
-    message = client.messages.create(
-        model="claude-opus-4-6",
-        max_tokens=4096,
-        messages=[{"role": "user", "content": prompt}]
-    )
-    return message.content[0].text
+    import time
+    for attempt in range(4):
+        try:
+            message = client.messages.create(
+                model="claude-sonnet-4-6",
+                max_tokens=4096,
+                messages=[{"role": "user", "content": prompt}]
+            )
+            return message.content[0].text
+        except Exception as exc:
+            if attempt < 3 and getattr(exc, 'status_code', 0) in (529, 503, 502):
+                wait = 2 ** attempt * 5  # 5s, 10s, 20s
+                log.warning("Claude API overloaded (tentativa %d/4), aguardando %ds...", attempt+1, wait)
+                time.sleep(wait)
+            else:
+                raise
 
 
 # ---------------------------------------------------------------------------
