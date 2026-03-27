@@ -100,6 +100,7 @@ def init_db():
                 name TEXT,
                 payment_id TEXT,
                 status TEXT DEFAULT 'pending',
+                payment_source TEXT DEFAULT 'manual',
                 form_token TEXT UNIQUE,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
@@ -117,6 +118,12 @@ def init_db():
             )
         """)
         db.commit()
+        # Adiciona coluna payment_source se nao existir (migracao)
+        try:
+            db.execute("ALTER TABLE purchases ADD COLUMN payment_source TEXT DEFAULT 'manual'")
+            db.commit()
+        except Exception:
+            pass  # coluna ja existe
 
 init_db()
 
@@ -213,7 +220,7 @@ def webhook_mercadopago():
 
             form_token = str(uuid.uuid4())
             db.execute(
-                "UPDATE purchases SET status='approved', payment_id=?, form_token=? WHERE id=?",
+                "UPDATE purchases SET status='approved', payment_id=?, form_token=?, payment_source='mercadopago' WHERE id=?",
                 (payment_id, form_token, purchase_id)
             )
             db.commit()
@@ -741,11 +748,12 @@ def admin():
         ).fetchall()
     # Stats
     approved = [r for r in rows if r["pstatus"] == "approved"]
-    total_purchases = len(set(r["purchase_id"] for r in approved))
+    total_purchases = len(set(r["purchase_id"] for r in approved if r.get("payment_source") == "mercadopago"))
     total_done = len([r for r in rows if r["diag_status"] == "done"])
     total_processing = len([r for r in rows if r["diag_status"] == "processing"])
     total_error = len([r for r in rows if r["diag_status"] == "error"])
-    receita = total_purchases * 97
+    total_real = len([r for r in rows if r["payment_source"] == "mercadopago" and r["pstatus"] == "approved"])
+    receita = total_real * 97
     return render_template("admin.html",
         diagnostics=rows,
         pending_purchases=pending,
@@ -938,6 +946,72 @@ def meu_relatorio_pdf(purchase_id):
     name_slug = (row["name"] or "relatorio").replace(" ", "_")[:30]
     return send_file(pdf_path, mimetype="application/pdf", as_attachment=True,
                      download_name=f"diagnostico_{name_slug}.pdf")
+
+
+@app.route("/admin/mp-verificar/<payment_id>")
+def admin_mp_verificar(payment_id):
+    """Consulta o Mercado Pago para verificar status real de um pagamento."""
+    senha = request.args.get("key", "")
+    if senha != ADMIN_PASSWORD:
+        abort(403)
+    if not payment_id or payment_id == "None":
+        return jsonify({"ok": False, "erro": "payment_id nao informado"}), 400
+    try:
+        sdk = mercadopago.SDK(MERCADOPAGO_TOKEN)
+        result = sdk.payment().get(payment_id)
+        if result["status"] != 200:
+            return jsonify({"ok": False, "erro": f"MP retornou status {result['status']}"}), 400
+        p = result["response"]
+        return jsonify({
+            "ok": True,
+            "status": p.get("status"),
+            "status_detail": p.get("status_detail"),
+            "valor": p.get("transaction_amount"),
+            "moeda": p.get("currency_id"),
+            "pagador_email": p.get("payer", {}).get("email"),
+            "data": p.get("date_approved") or p.get("date_created"),
+            "descricao": p.get("description"),
+            "metodo": p.get("payment_type_id"),
+        })
+    except Exception as e:
+        log.exception("Erro ao verificar MP: %s", e)
+        return jsonify({"ok": False, "erro": str(e)}), 500
+
+
+@app.route("/admin/mp-pagamentos")
+def admin_mp_pagamentos():
+    """Lista os ultimos pagamentos aprovados diretamente do Mercado Pago."""
+    senha = request.args.get("key", "")
+    if senha != ADMIN_PASSWORD:
+        abort(403)
+    try:
+        sdk = mercadopago.SDK(MERCADOPAGO_TOKEN)
+        filtros = {
+            "status": "approved",
+            "sort": "date_created",
+            "criteria": "desc",
+            "range": "date_created",
+            "begin_date": "NOW-30DAYS",
+            "end_date": "NOW",
+        }
+        result = sdk.payment().search(filtros)
+        if result["status"] != 200:
+            return jsonify({"ok": False, "erro": "Falha ao buscar MP"}), 400
+        pagamentos = result["response"].get("results", [])
+        resumo = [{
+            "id": str(p.get("id")),
+            "status": p.get("status"),
+            "valor": p.get("transaction_amount"),
+            "pagador": p.get("payer", {}).get("email"),
+            "data": p.get("date_approved") or p.get("date_created"),
+            "external_reference": p.get("external_reference"),
+            "descricao": p.get("description"),
+        } for p in pagamentos]
+        total_real = sum(p["valor"] or 0 for p in resumo)
+        return jsonify({"ok": True, "total": len(resumo), "receita_real": total_real, "pagamentos": resumo})
+    except Exception as e:
+        log.exception("Erro ao buscar pagamentos MP: %s", e)
+        return jsonify({"ok": False, "erro": str(e)}), 500
 
 
 if __name__ == "__main__":
