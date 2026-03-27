@@ -539,28 +539,61 @@ def _gerar_pdf(diag_id: str, nome_cliente: str, report_text: str, fd: dict) -> s
     return pdf_path
 
 
-def _escrever_paragrafos(pdf: FPDF, texto: str):
-    """Escreve texto com suporte a parágrafos e bullets."""
-    lm = pdf.l_margin
-    w = pdf.w - pdf.l_margin - pdf.r_margin
+def _strip_inline_md(t):
+    """Remove marcadores markdown: **bold**, *italic*, # headers."""
+    t = t.replace("**", "")
+    t = t.replace("* ", "")
+    return t.strip()
+
+
+def _escrever_paragrafos(pdf, texto):
+    """Escreve texto com suporte a paragrafos, bullets e markdown basico."""
+    lm  = pdf.l_margin
+    w   = pdf.w - pdf.l_margin - pdf.r_margin
+    VERDE = (26, 92, 56)
+    TEXTO = (50, 50, 50)
+
     for linha in texto.split("\n"):
         linha = linha.strip()
         if not linha:
             pdf.ln(3)
             continue
-        pdf.set_x(lm)
-        if linha.startswith("- ") or linha.startswith("• "):
+        if linha in ("---", "***", "___"):
+            pdf.ln(2)
+            pdf.set_draw_color(200, 200, 200)
+            pdf.line(lm, pdf.get_y(), lm + w, pdf.get_y())
+            pdf.ln(4)
+            pdf.set_draw_color(0, 0, 0)
+            continue
+        if linha.startswith("#"):
+            level = len(linha) - len(linha.lstrip("#"))
+            text  = _strip_inline_md(linha.lstrip("# "))
+            size  = max(13 - (level - 1) * 2, 9)
+            pdf.set_x(lm)
+            pdf.set_font("Helvetica", "B", size)
+            pdf.set_text_color(*VERDE)
+            pdf.multi_cell(w, size * 0.75, text, align="L")
+            pdf.set_font("Helvetica", "", 10)
+            pdf.set_text_color(*TEXTO)
+            pdf.ln(1)
+            continue
+        if linha.startswith("- ") or linha.startswith("* "):
             pdf.set_x(lm + 4)
-            pdf.multi_cell(w - 4, 6, "• " + linha[2:], align="L")
-        elif linha.startswith("**") and linha.endswith("**"):
+            pdf.set_text_color(*TEXTO)
+            pdf.multi_cell(w - 4, 6, "- " + _strip_inline_md(linha[2:]), align="L")
+            continue
+        if linha.startswith("**") and linha.endswith("**") and len(linha) > 4:
             pdf.set_x(lm)
             pdf.set_font("Helvetica", "B", 10)
-            clean = linha[2:-2] if linha.startswith("**") and linha.endswith("**") else linha
-            pdf.multi_cell(w, 6, clean, align="L")
+            pdf.set_text_color(*VERDE)
+            pdf.multi_cell(w, 6, linha[2:-2].strip(), align="L")
             pdf.set_font("Helvetica", "", 10)
-        else:
-            pdf.set_x(lm)
-            pdf.multi_cell(w, 6, linha, align="L")
+            pdf.set_text_color(*TEXTO)
+            continue
+        pdf.set_x(lm)
+        pdf.set_font("Helvetica", "", 10)
+        pdf.set_text_color(*TEXTO)
+        pdf.multi_cell(w, 6, _strip_inline_md(linha), align="L")
     pdf.ln(2)
 
 
@@ -759,6 +792,123 @@ def admin_pdf(diag_id):
 @app.route("/health")
 def health():
     return jsonify({"status": "ok", "ts": datetime.now().isoformat()})
+
+
+
+@app.route("/admin/enviar-email/<diag_id>", methods=["POST"])
+def admin_enviar_email(diag_id):
+    """Reenvia o email com PDF para o cliente manualmente."""
+    senha = request.args.get("key", "")
+    if senha != ADMIN_PASSWORD:
+        abort(403)
+    with get_db() as db:
+        cur = db.execute(
+            "SELECT d.id, d.pdf_path, d.report_text, p.name, p.email FROM diagnostics d "
+            "JOIN purchases p ON p.id = d.purchase_id "
+            "WHERE d.id=? OR d.purchase_id=? "
+            "ORDER BY d.created_at DESC LIMIT 1", (diag_id, diag_id)
+        )
+        row = cur.fetchone()
+    if not row:
+        return jsonify({"ok": False, "erro": "Diagnostico nao encontrado"}), 404
+    if not row["report_text"]:
+        return jsonify({"ok": False, "erro": "Relatorio ainda nao gerado"}), 400
+    pdf_path = row["pdf_path"]
+    if not pdf_path or not os.path.exists(pdf_path):
+        form_data = {"_name": row["name"] or "Cliente"}
+        try:
+            pdf_path = _gerar_pdf(row["id"], row["name"] or "Cliente", row["report_text"], form_data)
+            with get_db() as db:
+                db.execute("UPDATE diagnostics SET pdf_path=? WHERE id=?", (pdf_path, row["id"]))
+                db.commit()
+        except Exception as e:
+            log.exception("Erro ao regenerar PDF: %s", e)
+            return jsonify({"ok": False, "erro": f"Falha ao gerar PDF: {e}"}), 500
+    try:
+        _enviar_relatorio(row["email"], row["name"] or "Cliente", pdf_path)
+        return jsonify({"ok": True, "msg": f"Email reenviado para {row['email']}"})
+    except Exception as e:
+        log.exception("Erro ao reenviar email: %s", e)
+        return jsonify({"ok": False, "erro": str(e)}), 500
+
+
+@app.route("/meu-relatorio/<purchase_id>")
+def meu_relatorio(purchase_id):
+    """Area do cliente - visualizar e baixar o relatorio."""
+    with get_db() as db:
+        cur = db.execute(
+            "SELECT p.name, p.email, p.status as pstatus, "
+            "d.status as dstatus, d.id as diag_id, d.pdf_path, d.report_text "
+            "FROM purchases p "
+            "LEFT JOIN diagnostics d ON d.purchase_id = p.id "
+            "WHERE p.id=? "
+            "ORDER BY d.created_at DESC LIMIT 1", (purchase_id,)
+        )
+        row = cur.fetchone()
+    if not row:
+        abort(404)
+    # Pagamento nao aprovado
+    if row["pstatus"] != "approved":
+        return render_template("meu_relatorio.html",
+            state="pendente",
+            name=row["name"] or "Cliente",
+            purchase_id=purchase_id
+        )
+    # Relatorio ainda sendo gerado
+    if not row["dstatus"] or row["dstatus"] in ("processing", "pending"):
+        return render_template("meu_relatorio.html",
+            state="gerando",
+            name=row["name"] or "Cliente",
+            purchase_id=purchase_id
+        )
+    # Erro na geracao
+    if row["dstatus"] == "error":
+        return render_template("meu_relatorio.html",
+            state="erro",
+            name=row["name"] or "Cliente",
+            purchase_id=purchase_id
+        )
+    # Pronto
+    return render_template("meu_relatorio.html",
+        state="pronto",
+        name=row["name"] or "Cliente",
+        purchase_id=purchase_id,
+        diag_id=row["diag_id"]
+    )
+
+
+@app.route("/meu-relatorio/<purchase_id>/pdf")
+def meu_relatorio_pdf(purchase_id):
+    """Download do PDF pelo cliente."""
+    from flask import send_file
+    with get_db() as db:
+        cur = db.execute(
+            "SELECT p.name, p.status as pstatus, "
+            "d.id as diag_id, d.pdf_path, d.report_text, d.status as dstatus "
+            "FROM purchases p "
+            "LEFT JOIN diagnostics d ON d.purchase_id = p.id "
+            "WHERE p.id=? "
+            "ORDER BY d.created_at DESC LIMIT 1", (purchase_id,)
+        )
+        row = cur.fetchone()
+    if not row or row["pstatus"] != "approved" or row["dstatus"] != "done":
+        abort(404)
+    pdf_path = row["pdf_path"]
+    if not pdf_path or not os.path.exists(pdf_path):
+        if not row["report_text"]:
+            abort(404)
+        form_data = {"_name": row["name"] or "Cliente"}
+        try:
+            pdf_path = _gerar_pdf(row["diag_id"], row["name"] or "Cliente", row["report_text"], form_data)
+            with get_db() as db:
+                db.execute("UPDATE diagnostics SET pdf_path=? WHERE id=?", (pdf_path, row["diag_id"]))
+                db.commit()
+        except Exception as e:
+            log.exception("Erro ao regenerar PDF para cliente: %s", e)
+            abort(500)
+    name_slug = (row["name"] or "relatorio").replace(" ", "_")[:30]
+    return send_file(pdf_path, mimetype="application/pdf", as_attachment=True,
+                     download_name=f"diagnostico_{name_slug}.pdf")
 
 
 if __name__ == "__main__":
