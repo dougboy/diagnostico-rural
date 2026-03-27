@@ -727,8 +727,10 @@ def admin_pdf(diag_id):
         abort(403)
     with get_db() as db:
         cur = db.execute(
-            "SELECT d.pdf_path, d.report_text, p.name FROM diagnostics d "
-            "JOIN purchases p ON p.id = d.purchase_id WHERE d.id=?", (diag_id,)
+            "SELECT d.id, d.pdf_path, d.report_text, p.name FROM diagnostics d "
+            "JOIN purchases p ON p.id = d.purchase_id "
+            "WHERE d.id=? OR d.purchase_id=? "
+            "ORDER BY d.created_at DESC LIMIT 1", (diag_id, diag_id)
         )
         row = cur.fetchone()
     if not row:
