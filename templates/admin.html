@@ -1,78 +1,210 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Admin — Diagnóstico Rural</title>
-  <style>
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Segoe UI',sans-serif;background:#F5F5F5;padding:24px;color:#1A1A2E}
-    h1{font-size:22px;font-weight:800;color:#1A5C38;margin-bottom:6px}
-    p.sub{font-size:14px;color:#777;margin-bottom:28px}
-    h2{font-size:16px;font-weight:700;color:#1A1A2E;margin:28px 0 12px}
-    table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.07);font-size:13px}
-    th{background:#1A5C38;color:#fff;padding:10px 14px;text-align:left;font-weight:600}
-    td{padding:10px 14px;border-bottom:1px solid #eee;color:#444}
-    tr:last-child td{border-bottom:none}
-    .badge{display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;text-transform:uppercase}
-    .badge.approved{background:#E8F5EE;color:#1A5C38}
-    .badge.pending{background:#FFF8E7;color:#B07D00}
-    .badge.done{background:#E8F5EE;color:#1A5C38}
-    .badge.processing{background:#EFF6FF;color:#1D4ED8}
-    .badge.error{background:#FEE2E2;color:#B91C1C}
-    .stats{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:28px}
-    .stat{background:#fff;border-radius:10px;padding:16px 20px;flex:1;min-width:120px;box-shadow:0 1px 6px rgba(0,0,0,.07);text-align:center}
-    .stat .num{font-size:28px;font-weight:800;color:#1A5C38}
-    .stat .label{font-size:12px;color:#777;margin-top:4px}
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin - Diagnostico Rural</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f0; color: #333; }
+  header { background: #1a5c38; color: #fff; padding: 16px 24px; display: flex; align-items: center; gap: 12px; }
+  header h1 { font-size: 1.2rem; font-weight: 600; }
+  .container { max-width: 1200px; margin: 0 auto; padding: 24px 16px; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .stat-card { background: #fff; border-radius: 8px; padding: 16px; text-align: center; border: 1px solid #e0e0e0; }
+  .stat-card .n { font-size: 2rem; font-weight: 700; color: #1a5c38; }
+  .stat-card .label { font-size: 0.8rem; color: #666; margin-top: 4px; }
+  table { width: 100%; background: #fff; border-radius: 8px; border-collapse: collapse; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+  th { background: #1a5c38; color: #fff; text-align: left; padding: 12px 14px; font-size: 0.82rem; font-weight: 600; }
+  td { padding: 11px 14px; border-bottom: 1px solid #f0f0f0; font-size: 0.85rem; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #fafff8; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+  .badge-done { background: #d4edda; color: #155724; }
+  .badge-processing { background: #fff3cd; color: #856404; }
+  .badge-error { background: #f8d7da; color: #721c24; }
+  .badge-pending { background: #e2e3e5; color: #383d41; }
+  .badge-approved { background: #d4edda; color: #155724; }
+  .badge-waiting { background: #fff3cd; color: #856404; }
+  .btn { display: inline-block; padding: 5px 12px; border-radius: 5px; font-size: 0.78rem; cursor: pointer; border: 1px solid transparent; font-weight: 500; text-decoration: none; }
+  .btn-pdf { background: #1a5c38; color: #fff; }
+  .btn-pdf:hover { background: #145230; }
+  .btn-email { background: #0d6efd; color: #fff; }
+  .btn-email:hover { background: #0a58ca; }
+  .btn-copy { background: #6c757d; color: #fff; }
+  .btn-copy:hover { background: #5a6268; }
+  .btn-sm { padding: 4px 9px; font-size: 0.73rem; }
+  .actions { display: flex; gap: 5px; flex-wrap: wrap; }
+  .toast { position: fixed; bottom: 24px; right: 24px; background: #333; color: #fff; padding: 12px 20px; border-radius: 8px; font-size: 0.9rem; z-index: 9999; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+  .section-title { font-size: 1rem; font-weight: 600; color: #1a5c38; margin-bottom: 12px; margin-top: 28px; }
+  .text-muted { color: #888; font-style: italic; }
+  .name-cell { font-weight: 500; }
+  .email-cell { color: #555; font-size: 0.8rem; }
+  .empty-state { text-align: center; padding: 40px; color: #888; }
+</style>
 </head>
 <body>
-<h1>Painel Administrativo</h1>
-<p class="sub">Diagnóstico de Gestão Rural — Visão geral das compras e diagnósticos</p>
+<header>
+  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+  <h1>Painel Admin &mdash; Diagnostico de Gestao Rural</h1>
+</header>
 
-<div class="stats">
-  <div class="stat">
-    <div class="num">{{ purchases|length }}</div>
-    <div class="label">Compras totais</div>
+<div class="container">
+  <div class="stats">
+    <div class="stat-card">
+      <div class="n">{{ total_purchases }}</div>
+      <div class="label">Pagamentos aprovados</div>
+    </div>
+    <div class="stat-card">
+      <div class="n">{{ total_done }}</div>
+      <div class="label">Relatorios gerados</div>
+    </div>
+    <div class="stat-card">
+      <div class="n">{{ total_processing }}</div>
+      <div class="label">Em processamento</div>
+    </div>
+    <div class="stat-card">
+      <div class="n">{{ total_error }}</div>
+      <div class="label">Com erro</div>
+    </div>
+    <div class="stat-card">
+      <div class="n">R$ {{ receita }}</div>
+      <div class="label">Receita total</div>
+    </div>
   </div>
-  <div class="stat">
-    <div class="num">{{ purchases|selectattr('status','equalto','approved')|list|length }}</div>
-    <div class="label">Aprovadas</div>
-  </div>
-  <div class="stat">
-    <div class="num">{{ diagnostics|selectattr('status','equalto','done')|list|length }}</div>
-    <div class="label">Relatórios gerados</div>
-  </div>
-  <div class="stat">
-    <div class="num">R$ {{ (purchases|selectattr('status','equalto','approved')|list|length * 97)|int }}</div>
-    <div class="label">Receita estimada</div>
-  </div>
+
+  <div class="section-title">Diagnosticos</div>
+  {% if diagnostics %}
+  <table>
+    <thead>
+      <tr>
+        <th>Cliente</th>
+        <th>Data</th>
+        <th>Pagamento</th>
+        <th>Relatorio</th>
+        <th>Acoes</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for d in diagnostics %}
+      <tr id="row-{{ d.diag_id or d.purchase_id }}">
+        <td>
+          <div class="name-cell">{{ d.name or '-' }}</div>
+          <div class="email-cell">{{ d.email }}</div>
+        </td>
+        <td>{{ d.created_at[:16] if d.created_at else '-' }}</td>
+        <td>
+          <span class="badge badge-{{ 'approved' if d.pstatus == 'approved' else 'waiting' }}">
+            {{ 'Aprovado' if d.pstatus == 'approved' else d.pstatus or '-' }}
+          </span>
+        </td>
+        <td>
+          {% if d.diag_status == 'done' %}
+            <span class="badge badge-done">Pronto</span>
+          {% elif d.diag_status == 'processing' %}
+            <span class="badge badge-processing">Gerando...</span>
+          {% elif d.diag_status == 'error' %}
+            <span class="badge badge-error">Erro</span>
+          {% else %}
+            <span class="badge badge-pending">{{ d.diag_status or 'Aguardando formulario' }}</span>
+          {% endif %}
+        </td>
+        <td>
+          <div class="actions">
+            {% if d.diag_id %}
+              <a href="/admin/pdf/{{ d.diag_id }}?key={{ admin_key }}" target="_blank" class="btn btn-pdf btn-sm">PDF</a>
+              <button class="btn btn-email btn-sm" onclick="enviarEmail('{{ d.diag_id }}')">Reenviar Email</button>
+              {% if d.report_text %}
+              <button class="btn btn-copy btn-sm" onclick="copiarRelatorio('{{ d.diag_id }}')">Copiar Texto</button>
+              {% endif %}
+            {% endif %}
+            <a href="/meu-relatorio/{{ d.purchase_id }}" target="_blank" class="btn btn-sm" style="background:#e9ecef;color:#333">Area Cliente</a>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state">Nenhum diagnostico registrado ainda.</div>
+  {% endif %}
+
+  <div class="section-title">Pagamentos sem diagnostico</div>
+  {% if pending_purchases %}
+  <table>
+    <thead>
+      <tr>
+        <th>Cliente</th>
+        <th>Email</th>
+        <th>Data</th>
+        <th>Status</th>
+        <th>Link Formulario</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in pending_purchases %}
+      <tr>
+        <td>{{ p.name or '-' }}</td>
+        <td>{{ p.email }}</td>
+        <td>{{ p.created_at[:16] if p.created_at else '-' }}</td>
+        <td><span class="badge badge-{{ 'approved' if p.status == 'approved' else 'waiting' }}">{{ p.status }}</span></td>
+        <td><a href="/diagnostico/{{ p.id }}" target="_blank" class="btn btn-sm btn-pdf">Abrir Form</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="text-muted" style="padding:8px 0">Nenhum pagamento pendente de formulario.</p>
+  {% endif %}
 </div>
 
-<h2>Compras Recentes</h2>
-<table>
-  <tr><th>Data</th><th>Nome</th><th>Email</th><th>Status</th><th>Link Formulário</th></tr>
-  {% for p in purchases %}
-  <tr>
-    <td>{{ p.created_at[:16] }}</td>
-    <td>{{ p.name or '—' }}</td>
-    <td>{{ p.email }}</td>
-    <td><span class="badge {{ p.status }}">{{ p.status }}</span></td>
-    <td style="font-size:11px"><a href="/diagnostico/{{ p.id }}" target="_blank" style="color:#1A5C38">/diagnostico/{{ p.id[:8] }}...</a></td>
-  </tr>
-  {% endfor %}
-</table>
+<div class="toast" id="toast"></div>
 
-<h2>Diagnósticos</h2>
-<table>
-  <tr><th>Data</th><th>Purchase ID</th><th>Status</th><th>PDF</th></tr>
-  {% for d in diagnostics %}
-  <tr>
-    <td>{{ d.created_at[:16] }}</td>
-    <td style="font-size:11px;color:#aaa">{{ d.purchase_id[:8] }}...</td>
-    <td><span class="badge {{ d.status }}">{{ d.status }}</span></td>
-    <td>{% if d.pdf_path %}✅{% else %}—{% endif %}</td>
-  </tr>
-  {% endfor %}
-</table>
+<!-- Hidden containers for report texts -->
+{% for d in diagnostics %}
+{% if d.report_text %}
+<div id="rtext-{{ d.diag_id }}" style="display:none">{{ d.report_text }}</div>
+{% endif %}
+{% endfor %}
+
+<script>
+const ADMIN_KEY = "{{ admin_key }}";
+
+function showToast(msg, ok=true) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.background = ok ? '#1a5c38' : '#c0392b';
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+function enviarEmail(diagId) {
+    fetch('/admin/enviar-email/' + diagId + '?key=' + ADMIN_KEY, {method: 'POST'})
+        .then(r => r.json())
+        .then(d => {
+            if (d.ok) showToast(d.msg);
+            else showToast('Erro: ' + d.erro, false);
+        })
+        .catch(e => showToast('Falha na requisicao: ' + e, false));
+}
+
+function copiarRelatorio(diagId) {
+    const el = document.getElementById('rtext-' + diagId);
+    if (!el) { showToast('Texto nao disponivel', false); return; }
+    navigator.clipboard.writeText(el.textContent.trim())
+        .then(() => showToast('Texto copiado para a area de transferencia!'))
+        .catch(() => {
+            // Fallback
+            const ta = document.createElement('textarea');
+            ta.value = el.textContent.trim();
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            showToast('Texto copiado!');
+        });
+}
+</script>
 </body>
 </html>
