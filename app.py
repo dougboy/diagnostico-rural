@@ -5,7 +5,7 @@ import uuid
 import sqlite3
 import logging
 from datetime import datetime
-from flask import Flask, request, jsonify, render_template, redirect, url_for, abort
+from flask import Flask, request, jsonify, render_template, redirect, url_for, abort, send_file
 
 # Garante que pacotes instalados localmente são encontrados
 _local_pkgs = os.path.join(os.path.dirname(__file__), "vendor")
@@ -116,6 +116,16 @@ def init_db():
                 status TEXT DEFAULT 'pending',
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY(purchase_id) REFERENCES purchases(id)
+            )
+        """)
+        db.execute("""
+            CREATE TABLE IF NOT EXISTS refund_requests (
+                id TEXT PRIMARY KEY,
+                purchase_id TEXT NOT NULL,
+                email TEXT,
+                name TEXT,
+                motivo TEXT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
         """)
         db.commit()
@@ -312,7 +322,7 @@ def diagnostico_post(purchase_id):
             return
         # Email separado — falha nao-fatal
         try:
-            _enviar_relatorio(_email, _name, pdf_path)
+            _enviar_relatorio(_email, _name, pdf_path, purchase_id=purchase_id)
             log.info("Relatorio enviado para %s", _email)
         except Exception as e:
             log.warning("Falha ao enviar email para %s: %s", _email, e)
@@ -472,7 +482,7 @@ def _gerar_pdf(diag_id: str, nome_cliente: str, report_text: str, fd: dict) -> s
     pdf.set_y(165)
     pdf.set_font("Helvetica", "I", 11)
     pdf.set_text_color(180, 220, 195)
-    pdf.multi_cell(0, 7, "Elaborado por Douglas Lemos\nMBA FGV  |  MSc Inovação Tecnológica UFSC\nHead de Novos Negócios - Agronegócio", align="C")
+    pdf.multi_cell(0, 7, "Metodologia desenvolvida por Douglas Lemos\nMBA FGV  |  MSc Inovação Tecnológica UFSC\nAnálise gerada com suporte de Inteligência Artificial", align="C")
 
     pdf.set_y(240)
     pdf.set_font("Helvetica", "", 10)
@@ -674,7 +684,7 @@ def _enviar_email_formulario(email: str, name: str, purchase_id: str, form_token
         log.exception("Falha ao enviar email formulario via Apps Script: %s", exc)
 
 
-def _enviar_relatorio(email: str, name: str, pdf_path: str) -> None:
+def _enviar_relatorio(email: str, name: str, pdf_path: str, purchase_id: str = "") -> None:
     """Envia email com PDF via Google Apps Script webhook (HTTP POST, sem SMTP)."""
     import urllib.request as _urllib_req
     import base64 as _b64
@@ -686,11 +696,14 @@ def _enviar_relatorio(email: str, name: str, pdf_path: str) -> None:
     with open(pdf_path, "rb") as fh:
         pdf_b64 = _b64.b64encode(fh.read()).decode()
 
+    area_cliente = f"{BASE_URL}/minha-conta/{purchase_id}" if purchase_id else ""
+
     payload = _json.dumps({
         "secret": "diag-rural-wh-2026",
         "to": email,
         "name": name,
         "pdf_base64": pdf_b64,
+        "area_cliente": area_cliente,
     }).encode("utf-8")
 
     req = _urllib_req.Request(
@@ -884,6 +897,54 @@ def admin_pdf(diag_id):
     return send_file(new_path, mimetype="application/pdf", as_attachment=False)
 
 
+@app.route("/solicitar-reembolso", methods=["POST"])
+def solicitar_reembolso():
+    purchase_id = request.form.get("purchase_id", "").strip()
+    motivo = request.form.get("motivo", "").strip()
+    if not purchase_id or not motivo:
+        return "Dados incompletos.", 400
+    with get_db() as db:
+        purchase = db.execute("SELECT * FROM purchases WHERE id=?", (purchase_id,)).fetchone()
+        if not purchase or purchase["status"] != "approved":
+            abort(403)
+        existente = db.execute("SELECT id FROM refund_requests WHERE purchase_id=?", (purchase_id,)).fetchone()
+        if not existente:
+            req_id = str(uuid.uuid4())
+            db.execute(
+                "INSERT INTO refund_requests (id, purchase_id, email, name, motivo) VALUES (?,?,?,?,?)",
+                (req_id, purchase_id, purchase["email"], purchase["name"], motivo)
+            )
+            db.commit()
+    # Notifica Douglas por email (falha nao-fatal)
+    try:
+        import urllib.request as _ur, json as _j
+        html_admin = f"""<div style="font-family:Arial,sans-serif;max-width:560px;padding:24px">
+          <h2 style="color:#c0392b">Reembolso solicitado</h2>
+          <p><b>Cliente:</b> {purchase["name"]} ({purchase["email"]})</p>
+          <p><b>Motivo:</b></p>
+          <blockquote style="background:#f9f9f9;border-left:4px solid #c0392b;padding:12px">{motivo}</blockquote>
+          <p>Prazo CDC: 7 dias corridos a partir da compra.</p></div>"""
+        payload = _j.dumps({
+            "secret": "diag-rural-wh-2026",
+            "to": GMAIL_USER,
+            "name": "Douglas",
+            "type": "reembolso",
+            "html": html_admin,
+        }).encode()
+        req = _ur.Request(APPS_SCRIPT_WEBHOOK_URL, data=payload,
+            headers={"Content-Type": "application/json"}, method="POST")
+        _ur.urlopen(req, timeout=10)
+    except Exception as e:
+        log.warning("Falha ao notificar reembolso: %s", e)
+    return render_template("meu_relatorio.html",
+        state="pronto",
+        name=purchase["name"] or "Cliente",
+        purchase_id=purchase_id,
+        diag_id=None,
+        reembolso_enviado=True
+    )
+
+
 @app.route("/health")
 def health():
     return jsonify({"status": "ok", "ts": datetime.now().isoformat()})
@@ -982,11 +1043,14 @@ def meu_relatorio(purchase_id):
             purchase_id=purchase_id
         )
     # Pronto
+    with get_db() as db:
+        refund = db.execute("SELECT id FROM refund_requests WHERE purchase_id=?", (purchase_id,)).fetchone()
     return render_template("meu_relatorio.html",
         state="pronto",
         name=row["name"] or "Cliente",
         purchase_id=purchase_id,
-        diag_id=row["diag_id"]
+        diag_id=row["diag_id"],
+        reembolso_enviado=refund is not None
     )
 
 
