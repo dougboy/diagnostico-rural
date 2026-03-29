@@ -1,13 +1,116 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Pagamento em processamento</title>
-<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Segoe UI',sans-serif;background:#F5F5F5;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px}.card{background:#fff;border-radius:16px;padding:48px 40px;max-width:480px;text-align:center;box-shadow:0 8px 40px rgba(0,0,0,.1)}h1{font-size:22px;font-weight:800;color:#F0A500;margin-bottom:12px}p{font-size:15px;color:#555;line-height:1.7;margin-bottom:12px}</style></head>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Pagamento em processamento</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #F5F5F5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 48px 40px;
+      max-width: 480px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 8px 40px rgba(0,0,0,.1);
+    }
+    .icon { font-size: 52px; margin-bottom: 16px; }
+    h1 { font-size: 22px; font-weight: 800; color: #F0A500; margin-bottom: 12px; }
+    p { font-size: 15px; color: #555; line-height: 1.7; margin-bottom: 12px; }
+    .spinner {
+      display: inline-block;
+      width: 36px; height: 36px;
+      border: 4px solid #e0e0e0;
+      border-top-color: #1A5C38;
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+      margin: 16px auto;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .status-msg { font-size: 13px; color: #888; margin-top: 8px; }
+    .success-box {
+      display: none;
+      background: #e8f5e9;
+      border: 1px solid #a5d6a7;
+      border-radius: 10px;
+      padding: 20px;
+      margin-top: 20px;
+    }
+    .success-box h2 { color: #1A5C38; font-size: 18px; margin-bottom: 8px; }
+    .success-box p { color: #333; font-size: 14px; }
+  </style>
+</head>
 <body>
-<div class="card">
-  <div style="font-size:48px;margin-bottom:16px">⏳</div>
-  <h1>Pagamento em processamento</h1>
-  <p>Seu pagamento (boleto ou Pix) está sendo processado. Assim que confirmado, você receberá o link do formulário no email cadastrado.</p>
-  <p>Boletos podem levar até 2 dias úteis. Pix é aprovado em segundos.</p>
-</div>
-</body></html>
+  <div class="card">
+    <div class="icon" id="icon">&#9203;</div>
+    <h1 id="title">Processando pagamento Pix</h1>
+    <p id="desc">Confirme o pagamento no seu app do banco. Assim que o Pix for aprovado, voc&#234; ser&#225; redirecionado automaticamente para preencher o formul&#225;rio.</p>
+    <div class="spinner" id="spinner"></div>
+    <div class="status-msg" id="status-msg">Aguardando confirma&#231;&#227;o...</div>
+    <div class="success-box" id="success-box">
+      <h2>Pagamento confirmado!</h2>
+      <p>Seu Pix foi aprovado. Redirecionando para o formul&#225;rio...</p>
+    </div>
+  </div>
+
+  <script>
+    var purchaseId = "{{ purchase_id }}";
+    var paymentId  = "{{ payment_id }}";
+    var attempts = 0;
+    var MAX_ATTEMPTS = 80;
+
+    function buildUrl() {
+      var params = [];
+      if (purchaseId) params.push("purchase_id=" + encodeURIComponent(purchaseId));
+      else if (paymentId) params.push("payment_id=" + encodeURIComponent(paymentId));
+      return "/check-payment?" + params.join("&");
+    }
+
+    function pollPayment() {
+      if (!purchaseId && !paymentId) {
+        document.getElementById("status-msg").textContent = "Pix confirmado? Verifique o email cadastrado para o link do formul\u00e1rio.";
+        return;
+      }
+      fetch(buildUrl())
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          attempts++;
+          if (data.status === "approved" && data.redirect) {
+            document.getElementById("icon").textContent = "\u2705";
+            document.getElementById("title").textContent = "Pagamento confirmado!";
+            document.getElementById("desc").style.display = "none";
+            document.getElementById("spinner").style.display = "none";
+            document.getElementById("success-box").style.display = "block";
+            document.getElementById("status-msg").textContent = "Redirecionando em instantes...";
+            setTimeout(function() { window.location.href = data.redirect; }, 1500);
+          } else if (attempts < MAX_ATTEMPTS) {
+            var secs = attempts < 20 ? 3 : 6;
+            document.getElementById("status-msg").textContent = "Aguardando confirma\u00e7\u00e3o... (" + attempts + ")";
+            setTimeout(pollPayment, secs * 1000);
+          } else {
+            document.getElementById("spinner").style.display = "none";
+            document.getElementById("status-msg").textContent = "Verifique seu email \u2014 o link do formul\u00e1rio ser\u00e1 enviado quando o Pix for confirmado.";
+          }
+        })
+        .catch(function() {
+          if (attempts < MAX_ATTEMPTS) {
+            attempts++;
+            setTimeout(pollPayment, 5000);
+          }
+        });
+    }
+
+    setTimeout(pollPayment, 2000);
+  </script>
+</body>
+</html>

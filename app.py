@@ -639,28 +639,39 @@ def _smtp_send(to_email: str, subject: str, html_body: str, pdf_path: str = None
 
 
 def _enviar_email_formulario(email: str, name: str, purchase_id: str, form_token: str):
+    """Envia email com link do formulário via Google Apps Script (sem SMTP)."""
+    import urllib.request as _urllib_req
+    import json as _json
+
     link = f"{BASE_URL}/diagnostico/{purchase_id}"
-    html = f"""
-    <div style="font-family:Arial,sans-serif;max-width:580px;margin:0 auto;padding:32px 24px">
-      <div style="background:#1A5C38;padding:20px;border-radius:8px 8px 0 0;text-align:center">
-        <h2 style="color:#fff;margin:0">Pagamento confirmado!</h2>
-      </div>
-      <div style="background:#fff;border:1px solid #e5e5e5;border-top:none;padding:28px;border-radius:0 0 8px 8px">
-        <p>Olá, <strong>{name}</strong>!</p>
-        <p>Seu pagamento foi aprovado. Agora é só preencher o formulário de diagnóstico para eu gerar seu relatório personalizado.</p>
-        <p>O processo leva cerca de <strong>10 a 15 minutos</strong>. Quanto mais detalhado você for, mais preciso e útil será o relatório.</p>
-        <div style="text-align:center;margin:32px 0">
-          <a href="{link}" style="background:#F0A500;color:#1A1A2E;text-decoration:none;padding:16px 32px;border-radius:8px;font-weight:700;font-size:16px">
-            PREENCHER O FORMULÁRIO
-          </a>
-        </div>
-        <p style="color:#777;font-size:13px">Link válido para uso imediato. Se tiver qualquer problema, responda este email.</p>
-        <hr style="border:none;border-top:1px solid #eee;margin:24px 0">
-        <p style="font-size:13px;color:#999">Douglas Lemos<br>MBA FGV | MSc Inovação UFSC</p>
-      </div>
-    </div>
-    """
-    _smtp_send(email, "Pagamento confirmado - Preencha seu diagnostico", html)
+
+    if not APPS_SCRIPT_WEBHOOK_URL:
+        log.error("APPS_SCRIPT_WEBHOOK_URL nao configurada — email formulario NAO enviado para %s", email)
+        return
+
+    payload = _json.dumps({
+        "secret": "diag-rural-wh-2026",
+        "to": email,
+        "name": name,
+        "type": "form_link",
+        "form_link": link,
+    }).encode("utf-8")
+
+    req = _urllib_req.Request(
+        APPS_SCRIPT_WEBHOOK_URL,
+        data=payload,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with _urllib_req.urlopen(req, timeout=30) as resp:
+            result = _json.loads(resp.read())
+        if result.get("ok"):
+            log.info("Email formulario enviado via Apps Script para %s", email)
+        else:
+            log.error("Apps Script retornou erro no email formulario: %s", result.get("error"))
+    except Exception as exc:
+        log.exception("Falha ao enviar email formulario via Apps Script: %s", exc)
 
 
 def _enviar_relatorio(email: str, name: str, pdf_path: str) -> None:
@@ -729,7 +740,48 @@ def pagamento_falhou():
 
 @app.route("/pagamento-pendente")
 def pagamento_pendente():
-    return render_template("pagamento_pendente.html")
+    purchase_id = request.args.get("external_reference", "")
+    payment_id = request.args.get("payment_id", "")
+    return render_template("pagamento_pendente.html",
+                           purchase_id=purchase_id,
+                           payment_id=payment_id)
+
+@app.route("/check-payment")
+def check_payment():
+    """Endpoint para polling: verifica se pagamento foi aprovado."""
+    purchase_id = request.args.get("purchase_id", "")
+    payment_id = request.args.get("payment_id", "")
+
+    if not purchase_id and not payment_id:
+        return jsonify({"status": "unknown"}), 400
+
+    # Busca por purchase_id primeiro
+    if purchase_id:
+        with get_db() as db:
+            row = db.execute(
+                "SELECT status FROM purchases WHERE id=?", (purchase_id,)
+            ).fetchone()
+        if row and row["status"] == "approved":
+            return jsonify({"status": "approved", "redirect": f"/diagnostico/{purchase_id}"})
+        elif row:
+            return jsonify({"status": row["status"]})
+
+    # Fallback: busca no MP por payment_id
+    if payment_id:
+        try:
+            sdk = mercadopago.SDK(MERCADOPAGO_TOKEN)
+            result = sdk.payment().get(payment_id)
+            if result["status"] == 200:
+                payment = result["response"]
+                ext_ref = payment.get("external_reference", "")
+                status = payment.get("status", "pending")
+                if status == "approved" and ext_ref:
+                    return jsonify({"status": "approved", "redirect": f"/diagnostico/{ext_ref}"})
+                return jsonify({"status": status})
+        except Exception as e:
+            log.warning("check-payment MP lookup falhou: %s", e)
+
+    return jsonify({"status": "pending"})
 
 @app.route("/admin")
 def admin():
